@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from .models import User
+from .models import Spectrum
 
-class UserSerializer(serializers.ModelSerializer):
+class SpectrumSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = '__all__'  # Returns all fields (id, name, email, age)
+        model = Spectrum
+        fields = ['id', 'timestamp', 'device_id']
