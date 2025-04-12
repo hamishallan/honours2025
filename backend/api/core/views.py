@@ -2,7 +2,15 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Spectrum, SpectrumDataPoint
-from .serializers import SpectrumSerializer
+from .serializers import SpectrumDetailSerializer
+
+
+@api_view(['GET'])
+def list_spectra(request):
+    spectra = Spectrum.objects.all().order_by('-timestamp')  # most recent first
+    serializer = SpectrumDetailSerializer(spectra, many=True)
+    return Response(serializer.data)
+
 
 @api_view(['POST'])
 def upload_spectrum(request):
