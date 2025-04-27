@@ -1,7 +1,9 @@
 import re
+import json
 import time
 import socket
 import logging
+import requests
 from datetime import datetime
 
 # --- Configuration ---
@@ -101,6 +103,29 @@ class AoDAQClient:
         except Exception as e:
             logging.error(f"Error saving spectrum: {e}")
             
+            
+    def upload_spectrum_to_api(self, spectrum, api_url, device_id="pi-01"):
+        """
+        Upload the given spectrum data to the Django API.
+        """
+        wavelengths, intensities = zip(*spectrum)  # unzip the list of tuples
+
+        payload = {
+            "wavelengths": list(wavelengths),
+            "intensities": list(intensities),
+            "device_id": device_id
+        }
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(api_url, data=json.dumps(payload), headers=headers)
+            if response.status_code == 201:
+                logging.info("✅ Spectrum uploaded successfully to API.")
+            else:
+                logging.error(f"❌ Failed to upload spectrum. Status: {response.status_code}, Response: {response.text}")
+        except Exception as e:
+            logging.error(f"⚠️ Exception during spectrum upload: {e}")
+            
     
     def extract_value_after_ok(self, response: str, as_type=int):
         """
@@ -187,7 +212,11 @@ class AoDAQClient:
             spectrum = self.parse_spectrum_data(raw_response)
 
             if spectrum:
-                self.save_spectrum_csv(spectrum)
+                self.upload_spectrum_to_api(
+                    spectrum,
+                    api_url="https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/",
+                    device_id="simulated-pi"  # or whatever you want to tag the Pi/device as
+                )
             else:
                 logging.warning("No valid spectrum data parsed.")
 
