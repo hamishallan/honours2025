@@ -9,7 +9,7 @@ from datetime import datetime
 # --- Configuration ---
 RESPONSE_BUFFER_SIZE = 65536
 INIT_TIMEOUT = 5.0
-SPECTRUM_TIMEOUT = 60.0 * 5
+SPECTRUM_TIMEOUT = 60.0 * 2 # minutes
 COMMAND_DELAY = 0.5
 RETRY_ATTEMPTS = 5
 VALIDATE_RESP_OK = ["OK", "ARCspectro"]

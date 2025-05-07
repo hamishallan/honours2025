@@ -13,7 +13,7 @@ AODAQ_EXECUTABLE = os.path.join(SCRIPT_DIR, "AoDAQ-v1.4.2")
 AODAQ_HOST = "127.0.0.1"
 AODAQ_PORT = 1242
 CHECK_INTERVAL = 2.0  # seconds
-MAX_STARTUP_TIME = 30  # seconds
+MAX_STARTUP_TIME = 60  # seconds
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -86,13 +86,13 @@ def main():
     threading.Thread(target=stream_process_output, args=(aodaq_process,), daemon=True).start()
 
     try:
-        # Step 2: Wait until AoDAQ is ready
+        # Wait until AoDAQ is ready
         if not wait_for_aodaq(AODAQ_HOST, AODAQ_PORT):
             logging.error("AoDAQ did not become ready in time. Exiting.")
             aodaq_process.terminate()
             return
         
-        # Step 3: Run the AoDAQ Client
+        # Run the AoDAQ Client
         logging.info("Starting AoDAQ Client acquisition...")
         client = AoDAQClient(AODAQ_HOST, AODAQ_PORT)
         client.connect()
@@ -107,7 +107,7 @@ def main():
         logging.error(f"Unexpected error during automation: {e}")
 
     finally:
-        # Step 4: Shutdown AoDAQ properly
+        # Shutdown AoDAQ properly
         logging.info("Shutting down AoDAQ...")
         aodaq_process.terminate()
         try:
