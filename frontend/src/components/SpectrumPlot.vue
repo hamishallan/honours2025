@@ -17,28 +17,38 @@ const props = defineProps({
 const canvas = ref(null);
 let chartInstance = null;
 
-const createChart = () => {
+import { nextTick } from "vue";
+
+const createChart = async () => {
+  await nextTick();
+
   if (chartInstance) {
     chartInstance.destroy();
   }
 
-  const wavelengths = props.spectrum.data.map((p) => p.wavelength);
-  const intensities = props.spectrum.data.map((p) => p.intensity);
+  const ctx = canvas.value?.getContext("2d");
+  if (!ctx) {
+    console.error("Failed to create chart: can't acquire context from the given item");
+    return;
+  }
 
-  chartInstance = new Chart(canvas.value, {
+  const wavelengths = props.spectrum.data.map(p => p.wavelength);
+  const intensities = props.spectrum.data.map(p => p.intensity);
+
+  chartInstance = new Chart(ctx, {
     type: "line",
     data: {
       labels: wavelengths,
-      datasets: [
-        {
-          label: "Intensity",
-          data: intensities,
-          fill: false,
-        },
-      ],
-    },
+      datasets: [{
+        label: "Intensity",
+        data: intensities,
+        fill: false,
+        borderColor: "blue"
+      }]
+    }
   });
 };
+
 
 watch(
   () => props.spectrum,
