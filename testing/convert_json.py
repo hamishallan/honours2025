@@ -50,9 +50,6 @@ with open(input_csv_file, newline='', encoding='utf-8') as csvfile:
         # Remove None values (if any)
         clean_wavelengths = [w for w, i in zip(wavelengths, intensities) if i is not None]
         clean_intensities = [i for i in intensities if i is not None]
-        
-        print("Parsed wavelengths:", wavelengths[:10])
-        print("First row intensities:", intensities[:10])
 
         if clean_wavelengths and clean_intensities:
             spectrum_data = {

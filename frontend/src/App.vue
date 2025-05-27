@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>Soil Spectrum Visualisation</h1>
+    <h1>Honours Soil Spectrum Visualisation</h1>
     <SpectrumSelector @selected="selectedSpectrum = $event" />
     <SpectrumPlot :spectrum="selectedSpectrum" />
   </div>
