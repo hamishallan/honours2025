@@ -20,3 +20,5 @@ frontend/.cache/
 .idea/
 
 venv/
+*.csv
+*.json
