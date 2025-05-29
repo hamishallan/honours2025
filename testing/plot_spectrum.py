@@ -1,16 +1,19 @@
+import os
 import psycopg2
-import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
-# Update with your AWS PostgreSQL connection details
 DB_HOST = "database-1.cv6ic62me1li.us-east-1.rds.amazonaws.com"
 DB_PORT = "5432"
 DB_NAME = "postgres"
 DB_USER = "postgres"
 DB_PASSWORD = "honours2025"
+EXPORT_PATH = "/Users/hamish/Documents/UNI 2025/Honours/Plots"
 
 
-def fetch_spectrum_data():
+def fetch_spectrum_data(device_id, spectrum_id=None):
     try:
         connection = psycopg2.connect(
             host=DB_HOST,
@@ -20,8 +23,22 @@ def fetch_spectrum_data():
             password=DB_PASSWORD
         )
         cursor = connection.cursor()
-        spectrum_id = "23af87d8-0668-45c2-b4e8-cfc3868ad88f"  
-        cursor.execute("SELECT wavelength, intensity FROM core_spectrumdatapoint WHERE spectrum_id = %s;", (spectrum_id,))
+
+        if spectrum_id:
+            cursor.execute("""
+                SELECT d.wavelength, d.intensity
+                FROM core_spectrumdatapoint d
+                JOIN core_spectrum s ON d.spectrum_id = s.id
+                WHERE s.device_id = %s AND s.id = %s;
+            """, (device_id, spectrum_id))
+        else:
+            cursor.execute("""
+                SELECT d.wavelength, d.intensity
+                FROM core_spectrumdatapoint d
+                JOIN core_spectrum s ON d.spectrum_id = s.id
+                WHERE s.device_id = %s;
+            """, (device_id,))
+
         data = cursor.fetchall()
         cursor.close()
         connection.close()
@@ -31,36 +48,52 @@ def fetch_spectrum_data():
         return []
 
 
-from sklearn.preprocessing import StandardScaler
-
-
-def plot_spectrum(data):
+def plot_spectrum(data, device_id):
     if not data:
         print("No data to plot.")
         return
 
+    # Use seaborn styling
+    sns.set_style('whitegrid')
+
     wavelengths, intensities = zip(*data)
-    plt.figure(figsize=(10, 6))
-    plt.plot(wavelengths, intensities, label='Spectrum')
-    plt.xlabel('Wavelength (nm)')
-    plt.ylabel('Intensity')
-    plt.title('Spectrum Data Plot')
-    plt.grid()
-    plt.legend()
-        # Plot SNV corrected spectrum
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(wavelengths, intensities, label='Raw Spectrum', linewidth=1.5)
+    ax.set_xlabel('Wavelength (nm)', fontsize=12)
+    ax.set_ylabel('Intensity', fontsize=12)
+    ax.set_title('Raw Spectrum Data', fontsize=14, weight='bold')
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    fig.tight_layout()
+    spectrum_file = os.path.join(EXPORT_PATH, f"{device_id}_spectrum.png")
+    fig.savefig(spectrum_file, dpi=300)
+    plt.close(fig)
+
+    # SNV corrected spectrum
     scaler = StandardScaler()
     snv_intensities = scaler.fit_transform(np.array(intensities).reshape(-1, 1)).flatten()
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(wavelengths, snv_intensities, label='SNV Corrected Spectrum', color='orange')
-    plt.xlabel('Wavelength (nm)')
-    plt.ylabel('SNV Corrected Intensity')
-    plt.title('SNV Corrected Spectrum Data Plot')
-    plt.grid()
-    plt.legend()
-    plt.show()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(wavelengths, snv_intensities, label='SNV Corrected Spectrum', color='orange', linewidth=1.5)
+    ax.set_xlabel('Wavelength (nm)', fontsize=12)
+    ax.set_ylabel('SNV Corrected Intensity', fontsize=12)
+    ax.set_title('SNV Corrected Spectrum Data', fontsize=14, weight='bold')
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    fig.tight_layout()
+    snv_file = os.path.join(EXPORT_PATH, f"{device_id}_snv_corrected_spectrum.png")
+    fig.savefig(snv_file, dpi=300)
+    plt.close(fig)
+
+    print(f"Plots saved to:\n- {spectrum_file}\n- {snv_file}")
 
 
 if __name__ == "__main__":
-    spectrum_data = fetch_spectrum_data()
-    plot_spectrum(spectrum_data)
+    device_id = "simulated-pi"  
+    spectrum_id = "3778e431-b00d-404b-b06a-9244fff544db"
+    # spectrum_id = None
+    spectrum_data = fetch_spectrum_data(device_id, spectrum_id)
+    plot_spectrum(spectrum_data, device_id)
