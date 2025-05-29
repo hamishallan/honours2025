@@ -165,7 +165,7 @@ class AoDAQClient:
             self.send_command("TRAN:BIN 0", expect_ok=True)
             self.send_command("TRAN:SABS 1", expect_ok=True)
             self.send_command("SPEC:WLG 1", expect_ok=True)  # wavelength mode
-
+            
             # Set gain
             gain_val = GAIN_MAP.get(gain_level, 0)
             self.send_command(f"GAIN:SET {gain_val}", expect_ok=True)
@@ -212,10 +212,15 @@ class AoDAQClient:
             spectrum = self.parse_spectrum_data(raw_response)
 
             if spectrum:
+                # Add device_id tag with settings
+                device_id_tag = "simulated-pi_Gain-{0}_Apo-{1}_Avg-{2}".format(
+                    gain_level, apodization, num_averages
+                )
+
                 self.upload_spectrum_to_api(
                     spectrum,
                     api_url="https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/",
-                    device_id="simulated-pi"  # or whatever you want to tag the Pi/device as
+                    device_id=device_id_tag
                 )
             else:
                 logging.warning("No valid spectrum data parsed.")

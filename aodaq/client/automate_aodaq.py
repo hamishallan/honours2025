@@ -97,9 +97,9 @@ def main():
         client = AoDAQClient(AODAQ_HOST, AODAQ_PORT)
         client.connect()
         client.run_full_matlab_equivalent(
-            gain_level="Low",
+            gain_level="High",
             apodization="NortonBeerStrong",
-            num_averages=5,
+            num_averages=100,
             is_igm_avg=False
         )
 
