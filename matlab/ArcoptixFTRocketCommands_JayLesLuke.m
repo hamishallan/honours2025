@@ -4,7 +4,7 @@
 
 % Make sure that this is the installation path of the ARCspectro ROcket
 % software
-ArcoptixProgramFolder = 'C:\Program Files\ARCoptix\ARCspectro Rocket 2.4.9.18 - x64';
+ArcoptixProgramFolder = '/Users/hamish/Documents/UNI 2025/Honours/application/matlab';
 
 % Add DLL assembly
 NET.addAssembly(fullfile(ArcoptixProgramFolder,'ARCsoft.ARCspectroMd.dll'));
