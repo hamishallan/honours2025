@@ -21,4 +21,5 @@ frontend/.cache/
 
 venv/
 *.csv
-*.json
+
+testing/*.json
