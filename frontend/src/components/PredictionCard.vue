@@ -1,7 +1,7 @@
 <template>
-  <div v-if="spectrum" class="prediction-card">
+  <div v-if="spectrum" :class="['prediction-card', colourClass]">
     <div class="card-header">
-      <span>Predicted Soil Organic Carbon (SOC)</span>
+      Predicted Soil Organic Carbon (SOC)
     </div>
 
     <div class="card-body">
@@ -17,29 +17,34 @@
 </template>
 
 <script setup>
-defineProps({
-  spectrum: Object
+const props = defineProps({ spectrum: Object });
+
+const colourClass = computed(() => {
+  const val = props.spectrum?.predicted_value;
+  if (val === null || val === undefined) return 'bg-neutral';
+  if (val < 1.5) return 'bg-low';
+  if (val < 2.5) return 'bg-mid';
+  return 'bg-high';
 });
 </script>
 
 <style scoped>
 .prediction-card {
-  background: linear-gradient(135deg, #edf2f7, #e0f7fa);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
   max-width: 400px;
   margin: 1rem auto;
   font-family: 'Segoe UI', Roboto, sans-serif;
-  transition: all 0.3s ease;
+  transition: background 0.3s ease;
+  color: #1e293b;
 }
 
 .card-header {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #37474f;
-  margin-bottom: 1rem;
   text-align: center;
+  margin-bottom: 1rem;
 }
 
 .card-body {
@@ -51,18 +56,37 @@ defineProps({
 .prediction-value {
   font-size: 3rem;
   font-weight: 700;
-  color: #00796b;
 }
 
 .unit {
   font-size: 1.2rem;
   margin-left: 0.3rem;
-  color: #004d40;
 }
 
 .no-prediction {
   font-size: 1.2rem;
   color: #777;
   font-style: italic;
+}
+
+/* Colour classes */
+.bg-low {
+  background: #ffe5e0; /* red/orange for low SOC */
+  color: #c62828;
+}
+
+.bg-mid {
+  background: #fff9c4; /* yellow for moderate SOC */
+  color: #f9a825;
+}
+
+.bg-high {
+  background: #e0f2f1; /* green for high SOC */
+  color: #2e7d32;
+}
+
+.bg-neutral {
+  background: #eceff1;
+  color: #455a64;
 }
 </style>
