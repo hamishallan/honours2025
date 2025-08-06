@@ -1,8 +1,8 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Spectrum, SpectrumDataPoint
-from .serializers import SpectrumDetailSerializer
+from .models import Spectrum, SpectrumDataPoint, Prediction
+from .serializers import SpectrumDetailSerializer, PredictionSerializer
 
 
 @api_view(['GET'])
@@ -38,3 +38,12 @@ def upload_spectrum(request):
         "spectrum_id": str(spectrum.id),
         "points_saved": len(data_points)
     }, status=status.HTTP_201_CREATED)
+    
+
+@api_view(['POST'])
+def upload_prediction(request):
+    serializer = PredictionSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({"message": "Prediction saved."}, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

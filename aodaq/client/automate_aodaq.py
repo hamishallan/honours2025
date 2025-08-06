@@ -99,7 +99,7 @@ def main():
         client.run_full_matlab_equivalent(
             gain_level="High",
             apodization="NortonBeerStrong",
-            num_averages=1,
+            num_averages=10,
             is_igm_avg=False
         )
 

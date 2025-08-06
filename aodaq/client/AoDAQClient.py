@@ -106,7 +106,7 @@ class AoDAQClient:
             logging.error(f"Error saving spectrum: {e}")
             
             
-    def upload_spectrum_to_api(self, spectrum, api_url, device_id="pi-01"):
+    def upload_spectrum(self, spectrum, api_url, device_id="pi-01"):
         """
         Upload the given spectrum data to the Django API.
         """
@@ -123,11 +123,49 @@ class AoDAQClient:
             response = requests.post(api_url, data=json.dumps(payload), headers=headers)
             if response.status_code == 201:
                 logging.info("✅ Spectrum uploaded successfully to API.")
+                spectrum_id = response.json().get("spectrum_id")
+                return spectrum_id
             else:
                 logging.error(f"❌ Failed to upload spectrum. Status: {response.status_code}, Response: {response.text}")
         except Exception as e:
             logging.error(f"⚠️ Exception during spectrum upload: {e}")
-            
+
+        return None
+    
+    
+    def upload_prediction(self, predicted_value, spectrum_id, device_id, api_url):
+        """
+        Uploads a predicted SOC value to the Django API.
+
+        Args:
+            predicted_value (float): The predicted SOC value.
+            spectrum_id (str): UUID of the associated spectrum.
+            device_id (str): Identifier of the device used to capture the spectrum.
+            api_url (str): Full URL to the prediction upload endpoint.
+
+        Returns:
+            bool: True if upload successful, False otherwise.
+        """
+        payload = {
+            "device_id": device_id,
+            "predicted_value": predicted_value,
+            "spectrum": spectrum_id
+        }
+
+        headers = {"Content-Type": "application/json"}
+
+        try:
+            response = requests.post(api_url, json=payload, headers=headers)
+            if response.status_code == 201:
+                logging.info("✅ Predicted value uploaded to API.")
+                return True
+            else:
+                logging.error(f"❌ Prediction upload failed: {response.status_code} - {response.text}")
+        except Exception as e:
+            logging.error(f"⚠️ Error uploading predicted value: {e}")
+
+        return False
+
     
     def extract_value_after_ok(self, response: str, as_type=int):
         """
@@ -221,17 +259,21 @@ class AoDAQClient:
                 
                 # Compute and log predicted SOC using calibration model
                 calib_path = os.path.join(os.path.dirname(__file__), "calibration_coeffs.csv")
-                try:
-                    predicted_soc = apply_calibrated_model(spectrum, calib_path)
-                    logging.info(f"📈 Predicted SOC: {predicted_soc:.3f}")
-                except Exception as e:
-                    logging.error(f"Error applying calibrated model: {e}")
-
-                self.upload_spectrum_to_api(
+                predicted_soc = apply_calibrated_model(spectrum, calib_path)
+                
+                spectrum_id = self.upload_spectrum(
                     spectrum,
                     api_url="https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/",
                     device_id=device_id_tag
                 )
+                
+                self.upload_prediction(
+                    predicted_value=predicted_soc,
+                    spectrum_id=spectrum_id,
+                    device_id=device_id_tag,
+                    api_url="https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-prediction/"
+                )
+                
             else:
                 logging.warning("No valid spectrum data parsed.")
 

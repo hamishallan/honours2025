@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import upload_spectrum, list_spectra
+from .views import upload_spectrum, list_spectra, upload_prediction
 from django.http import HttpResponse
 
 def home(request):
@@ -25,7 +25,7 @@ def home(request):
 urlpatterns = [
     path('', home, name='home'),  # Add this to serve a basic response at "/"
     path('admin/', admin.site.urls),
-    path("upload-spectrum/", upload_spectrum, name="upload-spectrum"),
+    path('upload-prediction/', upload_prediction),
     path("spectra/", list_spectra, name="list-spectra"),
+    path("upload-spectrum/", upload_spectrum, name="upload-spectrum"),
 ]
-
