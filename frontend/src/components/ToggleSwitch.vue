@@ -1,7 +1,11 @@
 <template>
   <div class="toggle-container">
     <label class="toggle-switch">
-      <input type="checkbox" v-model="modelValue" />
+      <input
+        type="checkbox"
+        :checked="modelValue"
+        @change="$emit('update:modelValue', $event.target.checked)"
+      />
       <span class="slider"></span>
     </label>
     <span class="toggle-label">{{ label }}</span>
