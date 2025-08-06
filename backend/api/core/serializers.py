@@ -15,10 +15,11 @@ class SpectrumDataPointSerializer(serializers.ModelSerializer):
 
 class SpectrumDetailSerializer(serializers.ModelSerializer):
     data = SpectrumDataPointSerializer(many=True, read_only=True)
+    predicted_value = serializers.FloatField(source='prediction.predicted_value', read_only=True)
 
     class Meta:
         model = Spectrum
-        fields = ['id', 'timestamp', 'device_id', 'data']
+        fields = ['id', 'timestamp', 'device_id', 'data', 'predicted_value']
         
 
 class PredictionSerializer(serializers.ModelSerializer):

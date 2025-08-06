@@ -15,4 +15,4 @@ class Prediction(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     device_id = models.CharField(max_length=255)
     predicted_value = models.FloatField()
-    spectrum = models.ForeignKey(Spectrum, on_delete=models.CASCADE, related_name='predictions')
+    spectrum = models.OneToOneField(Spectrum, on_delete=models.CASCADE, related_name='prediction')

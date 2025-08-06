@@ -7,7 +7,7 @@ from .serializers import SpectrumDetailSerializer, PredictionSerializer
 
 @api_view(['GET'])
 def list_spectra(request):
-    spectra = Spectrum.objects.all().order_by('-timestamp')  # most recent first
+    spectra = Spectrum.objects.select_related('prediction').prefetch_related('data').order_by('-timestamp')
     serializer = SpectrumDetailSerializer(spectra, many=True)
     return Response(serializer.data)
 
