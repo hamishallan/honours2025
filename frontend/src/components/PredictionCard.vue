@@ -17,7 +17,11 @@
 </template>
 
 <script setup>
-const props = defineProps({ spectrum: Object });
+import { computed } from 'vue';
+
+const props = defineProps({
+  spectrum: Object
+});
 
 const colourClass = computed(() => {
   const val = props.spectrum?.predicted_value;
