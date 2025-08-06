@@ -80,6 +80,7 @@ input:checked + .slider:before {
 
 .toggle-label {
   font-size: 1rem;
-  color: #374151;
+  color: #f1f5f9; /* bright text for dark backgrounds */
+  font-weight: 500;
 }
 </style>
