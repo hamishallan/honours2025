@@ -34,6 +34,23 @@ const createCharts = async () => {
   const std = Math.sqrt(intensities.reduce((sum, val) => sum + (val - mean) ** 2, 0) / intensities.length);
   const snvIntensities = intensities.map(val => (val - mean) / std);
 
+  // Determine X-axis limits for both charts
+  const minX = Math.min(...wavelengths);
+  const maxX = Math.max(...wavelengths);
+
+  const commonScales = {
+    x: {
+      type: "linear",
+      min: minX,
+      max: maxX,
+      title: { display: true, text: "Wavelength" }
+    },
+    y: {
+      type: "linear",
+      title: { display: true, text: "Intensity" }
+    }
+  };
+
   // Raw Spectrum Chart
   const rawCtx = rawCanvas.value?.getContext("2d");
   if (!rawCtx) {
@@ -44,16 +61,16 @@ const createCharts = async () => {
   rawChartInstance = new Chart(rawCtx, {
     type: "line",
     data: {
-      labels: wavelengths,
       datasets: [{
         label: "Raw Spectrum",
-        data: intensities,
+        data: wavelengths.map((w, i) => ({ x: w, y: intensities[i] })),
         borderColor: "blue",
         fill: false
       }]
     },
     options: {
       responsive: true,
+      scales: commonScales,
       plugins: {
         title: {
           display: true,
@@ -70,19 +87,23 @@ const createCharts = async () => {
     return;
   }
 
+  // Copy common scales but change the Y-axis label for SNV
+  const snvScales = JSON.parse(JSON.stringify(commonScales));
+  snvScales.y.title.text = "SNV Intensity";
+
   snvChartInstance = new Chart(snvCtx, {
     type: "line",
     data: {
-      labels: wavelengths,
       datasets: [{
         label: "SNV Corrected Spectrum",
-        data: snvIntensities,
+        data: wavelengths.map((w, i) => ({ x: w, y: snvIntensities[i] })),
         borderColor: "orange",
         fill: false
       }]
     },
     options: {
       responsive: true,
+      scales: snvScales,
       plugins: {
         title: {
           display: true,
