@@ -41,8 +41,8 @@ const createCharts = async () => {
   const commonScales = {
     x: {
       type: "linear",
-      min: minX,
-      max: maxX,
+      min: 800,
+      max: 2600,
       title: { display: true, text: "Wavelength" }
     },
     y: {
