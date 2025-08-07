@@ -185,7 +185,7 @@ class AoDAQClient:
         return None
                             
             
-    def run_full_matlab_equivalent(self, gain_level="Low", apodization="NortonBeerStrong", num_averages=5, is_igm_avg=False):
+    def run_full_matlab_equivalent(self, gain_level="Low", apodization="NortonBeerStrong", num_averages=5, is_igm_avg=False, message=""):
         GAIN_MAP = {"Low": 0, "Medium": 1, "High": 2, "Extreme": 3}
         APO_MAP = {
             "Boxcar": 0, "NortonBeerWeak": 1, "NortonBeerMedium": 2,
@@ -253,8 +253,8 @@ class AoDAQClient:
 
             if spectrum:
                 # Add device_id tag with settings
-                device_id_tag = "simulated-pi_Gain-{0}_Apo-{1}_Avg-{2}".format(
-                    gain_level, apodization, num_averages
+                device_id_tag = "simulated-pi_Gain-{0}_Apo-{1}_Avg-{2}_'{3}'".format(
+                    gain_level, apodization, num_averages, message
                 )
                 
                 # Compute and log predicted SOC using calibration model

@@ -1,9 +1,9 @@
-                                                                                        
-import subprocess
 import os
 import time
 import socket
 import logging
+import argparse                                                                                        
+import subprocess
 from AoDAQClient import AoDAQClient
 
 
@@ -68,6 +68,14 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Automate AoDAQ Acquisition")
+    parser.add_argument("--msg", type=str, default="", help="Message to add to name of device")
+    parser.add_argument("--gain", type=str, default="High", help="Gain level (e.g., High, Low)")
+    parser.add_argument("--apo", type=str, default="NortonBeerStrong", help="Apodization type")
+    parser.add_argument("--avg", type=int, default=100, help="Number of averages")
+
+    args = parser.parse_args()
+    
     logging.info(f"Starting AoDAQ server: {AODAQ_EXECUTABLE}")
     aodaq_process = subprocess.Popen(
         [AODAQ_EXECUTABLE, "-v"],
@@ -97,10 +105,11 @@ def main():
         client = AoDAQClient(AODAQ_HOST, AODAQ_PORT)
         client.connect()
         client.run_full_matlab_equivalent(
-            gain_level="High",
-            apodization="NortonBeerStrong",
-            num_averages=10,
-            is_igm_avg=False
+            gain_level=args.gain,
+            apodization=args.apo,
+            num_averages=args.avg,
+            is_igm_avg=False,
+            message=args.msg
         )
 
     except Exception as e:

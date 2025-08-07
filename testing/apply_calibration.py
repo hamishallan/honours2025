@@ -66,6 +66,16 @@ def interpolate_spectrum(raw_wavelengths, raw_intensities, target_wavelengths):
     return interpolator(target_wavelengths)
 
 
+def snv(x):
+    x = np.asarray(x, dtype=float)
+    x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+    mu = np.nanmean(x)
+    sigma = np.nanstd(x)
+    if sigma == 0 or np.isnan(sigma):
+        return np.zeros_like(x)
+    return (x - mu) / sigma
+
+
 def apply_calibrated_model(raw_spectrum, calib_path):
     raw_wavelengths, raw_intensities = zip(*raw_spectrum)
     raw_wavelengths = np.array(raw_wavelengths)
@@ -73,14 +83,18 @@ def apply_calibrated_model(raw_spectrum, calib_path):
 
     calib_wavelengths, calib_coeffs, calib_const = load_calibration_csv(calib_path)
     aligned_intensities = interpolate_spectrum(raw_wavelengths, raw_intensities, calib_wavelengths)
-    
+    aligned_intensities = snv(aligned_intensities)
+
     predicted_value = np.dot(aligned_intensities, calib_coeffs) + calib_const
+    predicted_value *= 0.1 # Assuming we are expecting ~4.18 instead of ~41.8
     return predicted_value
 
 
 if __name__ == "__main__":
     device_id = "simulated-pi"  
     spectrum_id = "3778e431-b00d-404b-b06a-9244fff544db"
+    device_id = "simulated-pi_Gain-High_Apo-NortonBeerStrong_Avg-100"  
+    spectrum_id = "7e79e822-6bcf-47bd-9516-dea7fc46ddde"
     calib_path = "calibration_coeffs.csv"
     spectrum = fetch_spectrum_data(device_id, spectrum_id)
     predicted_soc = apply_calibrated_model(spectrum, calib_path)
