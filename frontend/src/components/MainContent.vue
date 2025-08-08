@@ -1,28 +1,22 @@
 <template>
   <main class="main-content">
-    <div v-if="!selectedSpectrum" class="placeholder">
-      Select a spectrum
-    </div>
+    <div v-if="!selectedSpectrum" class="placeholder">Select a spectrum</div>
 
-    <div v-else class="content-grid">
-      <!-- Header -->
+    <div v-else class="two-col">
       <div class="header">
-        <h1 class="spectrum-title">{{ selectedSpectrum.device_id }}</h1>
-        <ToggleSwitch
-          :modelValue="showPlot"
-          @update:modelValue="$emit('update:showPlot', $event)"
-          label="Show Spectrum Plot"
-        />
+        <h1 class="spectrum-title">
+          {{ "Spectrum" }}
+        </h1>
       </div>
 
-      <!-- Prediction Card -->
-      <div class="left-panel">
+      <!-- Left column: Prediction -->
+      <div class="col pred">
         <PredictionCard :spectrum="selectedSpectrum" />
       </div>
 
-      <!-- Plot -->
-      <div class="right-panel">
-        <SpectrumPlot v-if="showPlot" :spectrum="selectedSpectrum" />
+      <!-- Right column: Plots -->
+      <div class="col plots">
+        <SpectrumPlot :spectrum="selectedSpectrum" />
       </div>
     </div>
   </main>
@@ -30,22 +24,17 @@
 
 <script setup>
 import PredictionCard from "./PredictionCard.vue";
-import ToggleSwitch from "./ToggleSwitch.vue";
 import SpectrumPlot from "./SpectrumPlot.vue";
 
 defineProps({
   selectedSpectrum: Object,
-  showPlot: Boolean
 });
-defineEmits(["update:showPlot"]);
 </script>
 
 <style scoped>
 .main-content {
-  padding: 1.5rem;
-  height: 100vh; /* make sure it fills the viewport height */
-  box-sizing: border-box;
-  overflow: hidden; /* prevent page scroll */
+  height: 100vh; /* fills the grid row */
+  overflow: hidden; /* internal panels scroll, not the page */
   display: flex;
   flex-direction: column;
 }
@@ -57,36 +46,53 @@ defineEmits(["update:showPlot"]);
   font-size: 1.2rem;
 }
 
-.content-grid {
+.two-col {
   display: grid;
-  grid-template-rows: auto 1fr;
-  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr; /* header + content */
+  grid-template-columns: 360px 1fr; /* left (pred) | right (plots) */
   grid-template-areas:
     "header header"
-    "left-panel right-panel";
+    "pred   plots";
   gap: 1rem;
   height: 100%;
+  min-width: 0; /* prevents overflow truncation */
 }
 
 .header {
   grid-area: header;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.left-panel {
-  grid-area: left-panel;
-  overflow: auto;
-}
-
-.right-panel {
-  grid-area: right-panel;
-  overflow: auto;
+  justify-content: center;
+  border-bottom: 1px solid #22324b;
+  padding: 0.5rem 0;
 }
 
 .spectrum-title {
   margin: 0;
   color: #00b4d8;
+}
+
+.col.pred {
+  grid-area: pred;
+  overflow: auto; /* scroll only this panel if needed */
+  padding: 1rem;
+}
+
+.col.plots {
+  grid-area: plots;
+  overflow: auto; /* scroll only this panel if needed */
+  min-width: 0; /* lets charts shrink properly */
+  padding: 1rem;
+}
+
+/* Responsive: stack on narrow screens */
+@media (max-width: 1000px) {
+  .two-col {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "pred"
+      "plots";
+  }
 }
 </style>

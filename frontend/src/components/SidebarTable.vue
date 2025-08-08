@@ -10,8 +10,8 @@
       v-for="it in items"
       :key="it.id"
       class="row btn"
-      :class="{ active: it.id === selectedId }"
-      @click="$emit('select', it)"
+      :class="{ active: (it.raw?.id ?? it.id) === selectedId }"
+      @click="$emit('select', it.raw ?? it)"
     >
       <div class="cell title">{{ it.message }}</div>
       <div class="cell num">{{ it.avg }}</div>

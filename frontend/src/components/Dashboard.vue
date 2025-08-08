@@ -15,12 +15,7 @@
     </aside>
 
     <section class="main">
-      <header class="main-header">
-        <strong>{{ selected ? selected.message : "Select a spectrum" }}</strong>
-      </header>
-      <div class="main-body">
-        <!-- PredictionCard / Plot will go here later -->
-      </div>
+      <MainContent :selectedSpectrum="selected" v-model:showPlot="showPlot" />
     </section>
   </div>
 </template>
@@ -28,12 +23,14 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import SidebarTable from "./SidebarTable.vue";
+import MainContent from "./MainContent.vue";
 import { API_BASE_URL } from "../config/api";
 import { parseDeviceMeta } from "../utils/deviceMeta";
 
 const sidebarWidth = ref(550);
 const items = ref([]);
 const selected = ref(null);
+const showPlot = ref(false);
 
 async function fetchSpectra() {
   try {
@@ -42,23 +39,20 @@ async function fetchSpectra() {
 
     // Map API spectra -> table items
     items.value = (spectra || []).map((s) => {
-      const name =
-        s?.device?.name ??
-        s?.device_name ??
-        s?.device_id ??
-        "";
+      const name = s?.device?.name ?? s?.device_name ?? s?.device_id ?? "";
       const meta = parseDeviceMeta(name);
       return {
         id: s.id ?? s.spectrum_id ?? name, // fallback id
         message: meta.msg || meta.deviceName || "Untitled spectrum",
         avg: meta.avg ?? "—",
         gain: meta.gain ?? "—",
+        raw: s,
       };
     });
 
     // Auto-select first item (optional)
     if (!selected.value && items.value.length) {
-      selected.value = items.value[0];
+      selected.value = items.value[0].raw;
     }
   } catch (err) {
     console.error("Failed to load spectra", err);
@@ -71,10 +65,10 @@ onMounted(fetchSpectra);
 let isResizing = false;
 
 function startResize(e) {
-    isResizing = true;
-    document.addEventListener("mousemove", onDrag);
-    document.addEventListener("mouseup", stopResize);
-    document.body.style.userSelect = "none";
+  isResizing = true;
+  document.addEventListener("mousemove", onDrag);
+  document.addEventListener("mouseup", stopResize);
+  document.body.style.userSelect = "none";
 }
 
 const dashEl = ref(null);
@@ -82,7 +76,7 @@ const dashEl = ref(null);
 function onDrag(e) {
   if (!isResizing || !dashEl.value) return;
   const rect = dashEl.value.getBoundingClientRect();
-  const x = e.clientX - rect.left;       // width relative to the dashboard's left edge
+  const x = e.clientX - rect.left; // width relative to the dashboard's left edge
   const min = 200;
   const max = 1000;
   sidebarWidth.value = Math.min(Math.max(x, min), max);
@@ -131,12 +125,12 @@ onBeforeUnmount(() => {
 .resize-handle {
   position: absolute;
   top: 0;
-  right: 0;                 /* was -3px */
-  width: 8px;               /* was 6px */
+  right: 0; /* was -3px */
+  width: 8px; /* was 6px */
   height: 100%;
   cursor: ew-resize;
   background: transparent;
-  z-index: 10;              /* ensure it's clickable */
+  z-index: 10; /* ensure it's clickable */
 }
 .resize-handle:hover {
   background: rgba(255, 255, 255, 0.08);
