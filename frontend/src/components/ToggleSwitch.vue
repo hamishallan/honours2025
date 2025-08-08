@@ -14,10 +14,7 @@
 
 <script setup>
 defineProps({
-  modelValue: {
-    type: Boolean,
-    default: true
-  },
+  modelValue: Boolean,
   label: {
     type: String,
     default: 'Toggle'

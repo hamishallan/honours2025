@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2 v-if="spectrum">Plots</h2>
+    <h2 v-if="spectrum">Spectrum for {{ spectrum.device_id }}</h2>
     <canvas v-if="spectrum" ref="rawCanvas"></canvas>
     <canvas v-if="spectrum" ref="snvCanvas" class="mt-4"></canvas>
   </div>
@@ -33,6 +33,10 @@ const createCharts = async () => {
   const mean = intensities.reduce((a, b) => a + b, 0) / intensities.length;
   const std = Math.sqrt(intensities.reduce((sum, val) => sum + (val - mean) ** 2, 0) / intensities.length);
   const snvIntensities = intensities.map(val => (val - mean) / std);
+
+  // Determine X-axis limits for both charts
+  const minX = Math.min(...wavelengths);
+  const maxX = Math.max(...wavelengths);
 
   const commonScales = {
     x: {
