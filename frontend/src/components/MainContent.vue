@@ -42,8 +42,6 @@ defineEmits(["update:showPlot"]);
 
 <style scoped>
 .main-content {
-  margin-left: var(--sidebar-width, 260px);
-  flex: 1;
   padding: 1.5rem;
   height: 100vh; /* make sure it fills the viewport height */
   box-sizing: border-box;
