@@ -26,24 +26,47 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import SidebarTable from "./SidebarTable.vue";
+import { API_BASE_URL } from "../config/api";
+import { parseDeviceMeta } from "../utils/deviceMeta";
 
-/* Grid column width for the sidebar (left column) */
-const sidebarWidth = ref(500);
+const sidebarWidth = ref(550);
+const items = ref([]);
+const selected = ref(null);
 
-/* Temporary local data */
-const items = ref([
-  {
-    id: 1,
-    message: "bt_test 5mm, screws",
-    avg: 100,
-    gain: "High",
-    apo: "NortonBeerStrong",
-  },
-  { id: 2, message: "soil core A", avg: 50, gain: "Low", apo: "Hamming" },
-  { id: 3, message: "field sample B", avg: 80, gain: "High", apo: "Blackman" },
-]);
+async function fetchSpectra() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/spectra/`);
+    const spectra = await res.json();
+
+    // Map API spectra -> table items
+    items.value = (spectra || []).map((s) => {
+      const name =
+        s?.device?.name ??
+        s?.device_name ??
+        s?.device_id ??
+        "";
+      const meta = parseDeviceMeta(name);
+      return {
+        id: s.id ?? s.spectrum_id ?? name, // fallback id
+        message: meta.msg || meta.deviceName || "Untitled spectrum",
+        avg: meta.avg ?? "—",
+        gain: meta.gain ?? "—",
+      };
+    });
+
+    // Auto-select first item (optional)
+    if (!selected.value && items.value.length) {
+      selected.value = items.value[0];
+    }
+  } catch (err) {
+    console.error("Failed to load spectra", err);
+    items.value = [];
+  }
+}
+
+onMounted(fetchSpectra);
 
 let isResizing = false;
 
@@ -61,7 +84,7 @@ function onDrag(e) {
   const rect = dashEl.value.getBoundingClientRect();
   const x = e.clientX - rect.left;       // width relative to the dashboard's left edge
   const min = 200;
-  const max = 520;
+  const max = 1000;
   sidebarWidth.value = Math.min(Math.max(x, min), max);
 }
 
