@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar" :style="{ width: sidebarWidth + 'px' }">
+  <aside class="sidebar" :style="{ width: width + 'px' }">
     <h2>Available Spectra</h2>
 
     <div v-if="loading" class="spinner-container">
@@ -30,44 +30,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { onBeforeUnmount } from "vue";
 import SpectrumRow from "./SpectrumRow.vue";
 
-defineProps({
+const props = defineProps({
   spectra: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   selectedSpectrum: { type: Object, default: null },
+  width: { type: Number, default: 260 }               // NEW
 });
-defineEmits(["select"]);
+const emit = defineEmits(["select", "update:width"]);  // NEW
 
-const sidebarWidth = ref(260); // initial width
 let isResizing = false;
 
-function startResize(e) {
+function startResize() {
   isResizing = true;
   document.addEventListener("mousemove", resize);
   document.addEventListener("mouseup", stopResize);
 }
-
 function resize(e) {
-  if (isResizing) {
-    const newWidth = Math.max(200, e.clientX); // min 200px
-    sidebarWidth.value = Math.min(newWidth, 500); // max 500px
-  }
+  if (!isResizing) return;
+  const newWidth = Math.min(Math.max(200, e.clientX), 500); // clamp 200–500
+  emit("update:width", newWidth);                           // NEW
 }
-
 function stopResize() {
   isResizing = false;
   document.removeEventListener("mousemove", resize);
   document.removeEventListener("mouseup", stopResize);
 }
+onBeforeUnmount(stopResize);
 </script>
 
 <style scoped>
-.table, .header.row, .header .cell, .cell {
-  font-family: Consolas, Monaco, 'Courier New', monospace;
-}
-
 .sidebar {
   position: fixed;
   top: 0;
