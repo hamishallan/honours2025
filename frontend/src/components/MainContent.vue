@@ -4,9 +4,7 @@
 
     <div v-else class="two-col">
       <div class="header">
-        <h1 class="spectrum-title">
-          {{ "Spectrum" }}
-        </h1>
+        <h1 class="spectrum-title">Spectrum Dashboard</h1>
       </div>
 
       <!-- Left column: Prediction -->
@@ -69,7 +67,7 @@ defineProps({
 
 .spectrum-title {
   margin: 0;
-  color: #00b4d8;
+  color: #f0f0f0;
 }
 
 .col.pred {

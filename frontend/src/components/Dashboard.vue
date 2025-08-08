@@ -8,6 +8,7 @@
       <SidebarTable
         :items="items"
         :selected-id="selected?.id ?? null"
+        :loading="loading"
         @select="selected = $event"
       />
       <!-- Drag handle -->
@@ -31,9 +32,11 @@ const sidebarWidth = ref(550);
 const items = ref([]);
 const selected = ref(null);
 const showPlot = ref(false);
+const loading = ref(true);
 
 async function fetchSpectra() {
   try {
+    loading.value = true;
     const res = await fetch(`${API_BASE_URL}/spectra/`);
     const spectra = await res.json();
 
@@ -57,6 +60,8 @@ async function fetchSpectra() {
   } catch (err) {
     console.error("Failed to load spectra", err);
     items.value = [];
+  } finally {
+    loading.value = false;
   }
 }
 

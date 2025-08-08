@@ -6,7 +6,7 @@
     </div>
 
     <div class="prediction-main">
-      <span class="value">{{ spectrum.predicted_value.toFixed(2) }}%</span>
+      <span class="value">{{ predictedDisplay }}%</span>
       <p class="description">{{ description }}</p>
     </div>
 
@@ -22,13 +22,24 @@
 import { computed } from 'vue';
 
 const props = defineProps({
-  spectrum: Object
+  spectrum: { type: Object, default: () => ({}) }
 });
 
-const predicted = computed(() => props.spectrum?.predicted_value ?? null);
+// Parse to number and guard non-numeric / null
+const predictedNum = computed(() => {
+  const v = props.spectrum?.predicted_value;
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+});
+
+// String for UI (no toFixed on null!)
+const predictedDisplay = computed(() =>
+  predictedNum.value == null ? "—" : predictedNum.value.toFixed(2)
+);
 
 const statusLabel = computed(() => {
-  const val = predicted.value;
+  const val = predictedNum.value;
   if (val === null) return 'No Data';
   if (val < 1.5) return 'Low';
   if (val < 2.5) return 'Moderate';
@@ -36,7 +47,7 @@ const statusLabel = computed(() => {
 });
 
 const badgeClass = computed(() => {
-  const val = predicted.value;
+  const val = predictedNum.value;
   if (val === null) return 'badge-neutral';
   if (val < 1.5) return 'badge-low';
   if (val < 2.5) return 'badge-mid';
@@ -44,7 +55,7 @@ const badgeClass = computed(() => {
 });
 
 const description = computed(() => {
-  const val = predicted.value;
+  const val = predictedNum.value;
   if (val === null) return 'Prediction not available for this spectrum.';
   if (val < 1.5) return 'This indicates poor soil health. Consider increasing organic matter.';
   if (val < 2.5) return 'This is a moderate SOC level. Further improvement may be beneficial.';

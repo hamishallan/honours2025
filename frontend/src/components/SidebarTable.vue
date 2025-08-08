@@ -1,34 +1,60 @@
 <template>
-  <div class="table">
-    <div class="row header">
-      <div class="cell title">Message</div>
-      <div class="cell num">Avg</div>
-      <div class="cell num">Gain</div>
-    </div>
+  <div class="sidebar-wrapper">
+    <h2 class="sidebar-title">Spectra List</h2>
+    <div class="table">
+      <div class="table">
+        <div v-if="loading" class="loader-container">
+          <Spinner :size="32" color="#00b4d8" />
+        </div>
 
-    <button
-      v-for="it in items"
-      :key="it.id"
-      class="row btn"
-      :class="{ active: (it.raw?.id ?? it.id) === selectedId }"
-      @click="$emit('select', it.raw ?? it)"
-    >
-      <div class="cell title">{{ it.message }}</div>
-      <div class="cell num">{{ it.avg }}</div>
-      <div class="cell num">{{ it.gain }}</div>
-    </button>
+        <div v-else class="row header">
+          <div class="cell title">Message</div>
+          <div class="cell num">Avg</div>
+          <div class="cell num">Gain</div>
+        </div>
+
+        <template v-if="!loading">
+          <button
+            v-for="it in items"
+            :key="it.id"
+            class="row btn"
+            :class="{ active: (it.raw?.id ?? it.id) === selectedId }"
+            @click="$emit('select', it.raw ?? it)"
+          >
+            <div class="cell title">{{ it.message }}</div>
+            <div class="cell num">{{ it.avg }}</div>
+            <div class="cell num">{{ it.gain }}</div>
+          </button>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
+import Spinner from "./Spinner.vue";
 defineProps({
   items: { type: Array, default: () => [] },
   selectedId: { type: [String, Number, null], default: null },
+  loading: { type: Boolean, default: false },
 });
 defineEmits(["select"]);
 </script>
 
 <style scoped>
+.sidebar-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f0f0f0; /* off-white to match your theme */
+  margin-bottom: 0.75rem;
+  padding-left: 0.5rem;
+}
+
 .table {
   display: block;
   width: 100%;
@@ -83,11 +109,19 @@ defineEmits(["select"]);
 
 .cell {
   display: flex;
-  align-items: center;      /* vertical centering */
-  justify-content: center;  /* horizontal centering */
+  align-items: center; /* vertical centering */
+  justify-content: center; /* horizontal centering */
 }
 
 .cell.title {
   justify-content: flex-start; /* keep message text left-aligned */
+}
+
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80px; /* ensures it's visible even with no rows */
+  padding: 1rem;
 }
 </style>
