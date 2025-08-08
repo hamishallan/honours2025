@@ -9,12 +9,6 @@
       <span class="value">{{ predictedDisplay }}%</span>
       <p class="description">{{ description }}</p>
     </div>
-
-    <div class="prediction-footer">
-      <p class="info-text">
-        SOC is a key indicator of soil health and fertility. Higher SOC levels usually mean better soil quality.
-      </p>
-    </div>
   </div>
 </template>
 
