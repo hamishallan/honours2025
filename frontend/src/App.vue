@@ -1,31 +1,26 @@
-<!-- <template>
-  <Dashboard />
-</template>
-
-<script setup>
-import Dashboard from "./components/Dashboard.vue";
-import "./assets/base.css";
-</script> -->
-
-
 <template>
-  <div>
-    <h2>Device Geomap</h2>
-    <GrafanaEmbed
-        dashboardUid="29d03190-8e2f-4766-8b52-3c479d20adc9"
-        dashboardSlug="honours-dashboard"
-        refresh="30s"
-        height="800"
-        />
+  <div class="app">
+    <!-- Use SidebarMenu component -->
+    <SidebarMenu />
+
+    <!-- Main Content -->
+    <main class="content"></main>
   </div>
 </template>
 
-<script>
-import GrafanaEmbed from "./components/GrafanaEmbed.vue";
-
-export default {
-  components: {
-    GrafanaEmbed
-  }
-};
+<script setup>
+import SidebarMenu from "@/components/SidebarMenu.vue";
 </script>
+
+<style scoped>
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.content {
+  flex: 1;
+  background-color: #f8fafc; /* slate-50 */
+}
+</style>
