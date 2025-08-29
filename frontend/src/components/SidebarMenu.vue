@@ -2,7 +2,7 @@
   <aside :class="['sidebar', { collapsed }]">
     <!-- Sidebar Header -->
     <div class="sidebar-header">
-      <h2 v-show="!collapsed" class="sidebar-title">My App</h2>
+      <h2 v-show="!collapsed" class="sidebar-title">Soil Monitoring App</h2>
       <button class="toggle-btn" @click="collapsed = !collapsed">
         <ChevronLeft v-if="!collapsed" class="chevron" />
         <ChevronRight v-else class="chevron" />
@@ -13,21 +13,15 @@
     <nav>
       <ul>
         <li>
-          <a href="#">
-            <Home class="icon" />
-            <span class="label" v-show="!collapsed">Home</span>
+          <a href="#" @click="$emit('select', 'geo')">
+            <MapPinned class="icon" />
+            <span class="label" v-show="!collapsed">Maps</span>
           </a>
         </li>
         <li>
-          <a href="#">
-            <BarChart class="icon" />
-            <span class="label" v-show="!collapsed">Dashboard</span>
-          </a>
-        </li>
-        <li>
-          <a href="#">
-            <Settings class="icon" />
-            <span class="label" v-show="!collapsed">Settings</span>
+          <a href="#" @click="$emit('select', 'line')">
+            <ChartLine class="icon" />
+            <span class="label" v-show="!collapsed">Plots</span>
           </a>
         </li>
       </ul>
@@ -37,7 +31,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { Home, BarChart, Settings, ChevronLeft, ChevronRight } from "lucide-vue-next";
+import { MapPinned, ChartLine, ChevronLeft, ChevronRight } from "lucide-vue-next";
 
 const collapsed = ref(false);
 </script>
@@ -55,7 +49,7 @@ const collapsed = ref(false);
 }
 
 .sidebar.collapsed {
-  width: 60px;
+  width: 20px;
 }
 
 .sidebar-header {
@@ -69,16 +63,8 @@ const collapsed = ref(false);
   font-weight: 600;
   margin: 0;
   opacity: 1;
-  transform: translateX(0);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-.sidebar.collapsed .sidebar-title {
-  opacity: 0;
-  transform: translateX(-10px); /* slight slide left when hidden */
 }
 
 .toggle-btn {
@@ -88,6 +74,7 @@ const collapsed = ref(false);
   cursor: pointer;
   display: flex;
   align-items: center;
+  padding: 0.6em 0em ;
 }
 
 .sidebar ul {
