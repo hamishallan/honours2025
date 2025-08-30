@@ -154,3 +154,27 @@ def fields_view(request):
             serializer.save()
             return Response({"message": "Field created", "field": serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def fields_geojson(request):
+    fields = Field.objects.all()
+    features = []
+
+    for f in fields:
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [f.boundary]
+            },
+            "properties": {
+                "id": str(f.id),
+                "name": f.name,
+            }
+        })
+
+    return Response({
+        "type": "FeatureCollection",
+        "features": features
+    })

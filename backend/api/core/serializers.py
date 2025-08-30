@@ -67,6 +67,14 @@ class PredictionSerializer(serializers.ModelSerializer):
 
 
 class FieldSerializer(serializers.ModelSerializer):
+    geojson = serializers.SerializerMethodField()
+
     class Meta:
         model = Field
-        fields = ["id", "name", "boundary"]
+        fields = ["id", "name", "boundary", "geojson"]
+
+    def get_geojson(self, obj):
+        return {
+            "type": "Polygon",
+            "coordinates": [obj.boundary]  # wrap in list per GeoJSON spec
+        }
