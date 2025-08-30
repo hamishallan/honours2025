@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import upload_spectrum, list_spectra, upload_prediction, fields_view, fields_geojson
+from .views import upload_spectrum, list_spectra, upload_prediction, fields_view, fields_geojson, field_heatmap, field_heatmap_points
 from django.http import HttpResponse
 
 def home(request):
@@ -30,4 +30,6 @@ urlpatterns = [
     path("upload-spectrum/", upload_spectrum, name="upload-spectrum"),
     path("fields/", fields_view),
     path("fields/geojson/", fields_geojson),
+    path("fields/<uuid:field_id>/heatmap/", field_heatmap),
+    path("fields/<uuid:field_id>/heatmap-points/", field_heatmap_points),
 ]

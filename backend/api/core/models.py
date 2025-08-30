@@ -37,3 +37,17 @@ class Field(models.Model):
 
     def __str__(self):
         return self.name
+    
+
+class FieldHeatmapPoint(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    field = models.ForeignKey("Field", on_delete=models.CASCADE, related_name="heatmap_points")
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    value = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["field", "timestamp"]),
+        ]

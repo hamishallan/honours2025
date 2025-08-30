@@ -1,10 +1,12 @@
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from django.db.models import Q
 import math
+import numpy as np
+from django.db.models import Q
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from shapely.geometry import Polygon, Point, box
 
-from .models import Spectrum, SpectrumDataPoint, Prediction, Field
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint
 from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer
 
 
@@ -178,3 +180,93 @@ def fields_geojson(request):
         "type": "FeatureCollection",
         "features": features
     })
+    
+
+def idw_predict(x, y, samples, power=2):
+    """
+    Inverse Distance Weighting interpolation.
+    samples: [(lon, lat, value), ...]
+    """
+    weights, values = [], []
+    for sx, sy, val in samples:
+        d = np.sqrt((x - sx)**2 + (y - sy)**2)
+        if d == 0:  # exact match
+            return val
+        w = 1 / (d**power)
+        weights.append(w)
+        values.append(val * w)
+    return sum(values) / sum(weights) if weights else None
+
+
+@api_view(['GET'])
+def field_heatmap(request, field_id):
+    """
+    Returns a GeoJSON FeatureCollection of small grid cells,
+    each coloured by interpolated SOC inside the field polygon.
+    """
+    try:
+        field = Field.objects.get(pk=field_id)
+    except Field.DoesNotExist:
+        return Response({"error": "Field not found"}, status=404)
+
+    poly = Polygon(field.boundary)
+
+    # Collect all sample points with predictions
+    spectra = Spectrum.objects.filter(
+        prediction__isnull=False,
+        latitude__isnull=False,
+        longitude__isnull=False
+    )
+    samples = [(s.longitude, s.latitude, s.prediction.predicted_value) for s in spectra]
+
+    if not samples:
+        return Response({"error": "No prediction data available"}, status=404)
+
+    # Create grid over bounding box
+    minx, miny, maxx, maxy = poly.bounds
+    cell_size = float(request.query_params.get("cell_size", 0.001))  # degrees (~100m at equator)
+
+    features = []
+    points = []
+    x = minx
+    while x < maxx:
+        y = miny
+        while y < maxy:
+            cell = box(x, y, x + cell_size, y + cell_size)
+            # Clip to field polygon
+            clipped = cell.intersection(poly)
+            if not clipped.is_empty:
+                # Interpolate value at cell centroid
+                cx, cy = clipped.centroid.x, clipped.centroid.y
+                val = idw_predict(cx, cy, samples)
+                if val is not None:
+                    features.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [list(clipped.exterior.coords)]
+                        },
+                        "properties": {
+                            "value": val
+                        }
+                    })
+                    points.append((cy, cx, val))
+            y += cell_size
+        x += cell_size
+    
+    if points:
+        save_heatmap_points(field, points)
+
+    return Response({
+        "type": "FeatureCollection",
+        "features": features
+    })
+
+
+def save_heatmap_points(field, points):
+    objs = [
+        FieldHeatmapPoint(field=field, latitude=lat, longitude=lon, value=val)
+        for lat, lon, val in points
+    ]
+    FieldHeatmapPoint.objects.bulk_create(objs)
+    
