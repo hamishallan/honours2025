@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Spectrum, SpectrumDataPoint, Prediction
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field
 
 
 def _to_geojson_point(obj):
@@ -59,6 +59,14 @@ class SpectrumDetailSerializer(serializers.ModelSerializer):
 
 
 class PredictionSerializer(serializers.ModelSerializer):
+    device_id = serializers.CharField(source="spectrum.device_id", read_only=True)
+    
     class Meta:
         model = Prediction
         fields = ["device_id", "predicted_value", "spectrum"]
+
+
+class FieldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Field
+        fields = ["id", "name", "boundary"]

@@ -4,8 +4,8 @@ from rest_framework import status
 from django.db.models import Q
 import math
 
-from .models import Spectrum, SpectrumDataPoint, Prediction
-from .serializers import SpectrumDetailSerializer, PredictionSerializer
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field
+from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer
 
 
 @api_view(['GET'])
@@ -139,3 +139,18 @@ def upload_prediction(request):
         serializer.save()
         return Response({"message": "Prediction saved."}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'POST'])
+def fields_view(request):
+    if request.method == 'GET':
+        fields = Field.objects.all()
+        serializer = FieldSerializer(fields, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = FieldSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Field created", "field": serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

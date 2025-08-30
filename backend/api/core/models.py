@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 
 class Spectrum(models.Model):
@@ -18,6 +19,21 @@ class SpectrumDataPoint(models.Model):
     
 class Prediction(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
-    device_id = models.CharField(max_length=255)
     predicted_value = models.FloatField()
     spectrum = models.OneToOneField(Spectrum, on_delete=models.CASCADE, related_name='prediction')
+    
+
+class Field(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    # Store polygon as list of [lon, lat] points for testing
+    boundary = ArrayField(
+        base_field=ArrayField(
+            base_field=models.FloatField(),
+            size=2
+        ),
+        size=None
+    )
+
+    def __str__(self):
+        return self.name
