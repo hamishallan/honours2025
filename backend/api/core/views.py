@@ -143,21 +143,6 @@ def upload_prediction(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'POST'])
-def fields_view(request):
-    if request.method == 'GET':
-        fields = Field.objects.all()
-        serializer = FieldSerializer(fields, many=True)
-        return Response(serializer.data)
-
-    elif request.method == 'POST':
-        serializer = FieldSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Field created", "field": serializer.data}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 @api_view(['GET'])
 def fields_geojson(request):
     fields = Field.objects.all()
@@ -218,7 +203,36 @@ def field_points(request, field_id):
         "type": "FeatureCollection",
         "features": features
     })
-    
+
+
+@api_view(['GET', 'POST'])
+def fields_view(request):
+    if request.method == 'GET':
+        fields = Field.objects.all()
+        serializer = FieldSerializer(fields, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = FieldSerializer(data=request.data)
+        if serializer.is_valid():
+            field = serializer.save()
+
+            # Generate heatmap using boundary from request
+            boundary = request.data.get("boundary", [])
+            feature_collection, points = generate_heatmap_points(boundary)
+            if points:
+                save_heatmap_points(field, points)
+
+            return Response(
+                {
+                    "message": "Field created and heatmap generated",
+                    "field": serializer.data,
+                    "heatmap_preview": feature_collection
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 def idw_predict(x, y, samples, power=2):
     """
@@ -236,20 +250,14 @@ def idw_predict(x, y, samples, power=2):
     return sum(values) / sum(weights) if weights else None
 
 
-@api_view(['GET'])
-def field_heatmap(request, field_id):
+def generate_heatmap_points(boundary, cell_size=0.001):
     """
-    Returns a GeoJSON FeatureCollection of small grid cells,
-    each coloured by interpolated SOC inside the field polygon.
+    Generate IDW-interpolated grid points inside a polygon boundary.
+    boundary: list of [lon, lat] pairs
+    Returns both FeatureCollection and list of (lat, lon, val) for saving.
     """
-    try:
-        field = Field.objects.get(pk=field_id)
-    except Field.DoesNotExist:
-        return Response({"error": "Field not found"}, status=404)
+    poly = Polygon(boundary)
 
-    poly = Polygon(field.boundary)
-
-    # Collect all sample points with predictions
     spectra = Spectrum.objects.filter(
         prediction__isnull=False,
         latitude__isnull=False,
@@ -258,23 +266,19 @@ def field_heatmap(request, field_id):
     samples = [(s.longitude, s.latitude, s.prediction.predicted_value) for s in spectra]
 
     if not samples:
-        return Response({"error": "No prediction data available"}, status=404)
+        return {"type": "FeatureCollection", "features": []}, []
 
-    # Create grid over bounding box
     minx, miny, maxx, maxy = poly.bounds
-    cell_size = float(request.query_params.get("cell_size", 0.001))  # degrees (~100m at equator)
-
     features = []
     points = []
+
     x = minx
     while x < maxx:
         y = miny
         while y < maxy:
             cell = box(x, y, x + cell_size, y + cell_size)
-            # Clip to field polygon
             clipped = cell.intersection(poly)
             if not clipped.is_empty:
-                # Interpolate value at cell centroid
                 cx, cy = clipped.centroid.x, clipped.centroid.y
                 val = idw_predict(cx, cy, samples)
                 if val is not None:
@@ -284,21 +288,13 @@ def field_heatmap(request, field_id):
                             "type": "Polygon",
                             "coordinates": [list(clipped.exterior.coords)]
                         },
-                        "properties": {
-                            "value": val
-                        }
+                        "properties": {"value": val}
                     })
                     points.append((cy, cx, val))
             y += cell_size
         x += cell_size
-    
-    if points:
-        save_heatmap_points(field, points)
 
-    return Response({
-        "type": "FeatureCollection",
-        "features": features
-    })
+    return {"type": "FeatureCollection", "features": features}, points
 
 
 def save_heatmap_points(field, points):
@@ -308,3 +304,13 @@ def save_heatmap_points(field, points):
     ]
     FieldHeatmapPoint.objects.bulk_create(objs)
     
+
+@api_view(['GET'])
+def field_heatmap(request, field_id):
+    try:
+        field = Field.objects.get(pk=field_id)
+    except Field.DoesNotExist:
+        return Response({"error": "Field not found"}, status=404)
+
+    feature_collection, _ = generate_heatmap_points(field)
+    return Response(feature_collection)

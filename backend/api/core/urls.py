@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import upload_spectrum, list_spectra, upload_prediction, fields_view, field_heatmap, field_points, fields_geojson
+from .views import upload_spectrum, list_spectra, upload_prediction, fields_view, field_points, fields_geojson, field_heatmap
 from django.http import HttpResponse
 
 def home(request):

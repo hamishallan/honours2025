@@ -54,7 +54,7 @@ class Command(BaseCommand):
                     rel_x = (lon - minx) / (maxx - minx)
 
                     # Base gradient: higher SOC west → lower east
-                    base_value = 2.0 + (rel_x * 4.0)  # ~6% to ~2%
+                    base_value = 6.0 - (rel_x * 4.0)  # ~6% to ~2%
 
                     # Add random variation (soil heterogeneity)
                     noise = random.gauss(0, 0.3)
