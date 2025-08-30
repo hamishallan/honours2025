@@ -182,6 +182,44 @@ def fields_geojson(request):
     })
     
 
+@api_view(['GET'])
+def field_points(request, field_id):
+    try:
+        field = Field.objects.get(pk=field_id)
+    except Field.DoesNotExist:
+        return Response({"error": "Field not found"}, status=404)
+
+    poly = Polygon(field.boundary)
+
+    spectra = Spectrum.objects.filter(
+        prediction__isnull=False,
+        latitude__isnull=False,
+        longitude__isnull=False
+    )
+
+    features = []
+    for s in spectra:
+        pt = Point(s.longitude, s.latitude)
+        if poly.contains(pt):
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [s.longitude, s.latitude]
+                },
+                "properties": {
+                    "value": s.prediction.predicted_value,
+                    "device_id": s.device_id,
+                    "timestamp": s.timestamp.isoformat()
+                }
+            })
+
+    return Response({
+        "type": "FeatureCollection",
+        "features": features
+    })
+    
+
 def idw_predict(x, y, samples, power=2):
     """
     Inverse Distance Weighting interpolation.
