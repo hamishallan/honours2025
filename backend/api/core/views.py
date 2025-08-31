@@ -4,7 +4,7 @@ from django.db.models import Q
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from shapely.geometry import Polygon, Point, box
+from shapely.geometry import Polygon, Point, box, MultiPolygon
 
 from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint
 from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer
@@ -216,18 +216,10 @@ def fields_view(request):
         serializer = FieldSerializer(data=request.data)
         if serializer.is_valid():
             field = serializer.save()
-
-            # Generate heatmap using boundary from request
-            boundary = request.data.get("boundary", [])
-            feature_collection, points = generate_heatmap_points(boundary)
-            if points:
-                save_heatmap_points(field, points)
-
             return Response(
                 {
-                    "message": "Field created and heatmap generated",
-                    "field": serializer.data,
-                    "heatmap_preview": feature_collection
+                    "message": "Field created",
+                    "field": serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -282,11 +274,18 @@ def generate_heatmap_points(boundary, cell_size=0.001):
                 cx, cy = clipped.centroid.x, clipped.centroid.y
                 val = idw_predict(cx, cy, samples)
                 if val is not None:
+                    if isinstance(clipped, Polygon):
+                        coords = [list(clipped.exterior.coords)]
+                    elif isinstance(clipped, MultiPolygon):
+                        coords = [list(p.exterior.coords) for p in clipped.geoms]
+                    else:
+                        coords = []
+
                     features.append({
                         "type": "Feature",
                         "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [list(clipped.exterior.coords)]
+                            "type": "Polygon" if isinstance(clipped, Polygon) else "MultiPolygon",
+                            "coordinates": coords
                         },
                         "properties": {"value": val}
                     })
@@ -312,5 +311,5 @@ def field_heatmap(request, field_id):
     except Field.DoesNotExist:
         return Response({"error": "Field not found"}, status=404)
 
-    feature_collection, _ = generate_heatmap_points(field)
+    feature_collection, _ = generate_heatmap_points(field.boundary)
     return Response(feature_collection)

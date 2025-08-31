@@ -3,10 +3,11 @@ from django.utils import timezone
 import random
 from shapely.geometry import Point, Polygon
 from core.models import Field, Spectrum, Prediction
+from core.views import generate_heatmap_points, save_heatmap_points
 
 
 class Command(BaseCommand):
-    help = "Generate fake SOC predictions inside a field"
+    help = "Generate fake SOC predictions inside a field and regenerate its heatmap"
 
     def add_arguments(self, parser):
         parser.add_argument("field_id", type=str, help="UUID of the field")
@@ -33,6 +34,10 @@ class Command(BaseCommand):
         minx, miny, maxx, maxy = poly.bounds
         dx = (maxx - minx) / (num_cols - 1)
         dy = (maxy - miny) / (num_rows - 1)
+
+        self.stdout.write(
+            self.style.HTTP_INFO(f"Creating predictions...")
+        )
 
         created = 0
         for i in range(num_cols):
@@ -79,3 +84,21 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Created {created} fake predictions inside {field.name}")
         )
+        
+        self.stdout.write(
+            self.style.HTTP_INFO(f"Generating heatmap...")
+        )
+
+        # ---- Regenerate heatmap after inserting test data ----
+        feature_collection, points = generate_heatmap_points(field.boundary)
+        if points:
+            save_heatmap_points(field, points)
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Heatmap regenerated for {field.name} with {len(points)} grid cells"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(f"No heatmap points generated for {field.name}")
+            )
