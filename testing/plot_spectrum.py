@@ -93,6 +93,6 @@ def plot_spectrum(data, device_id):
 
 if __name__ == "__main__":
     device_id = "tractor_probe_1"  
-    spectrum_id = "411bc1e5-6998-49b7-ad73-89b5b33b6f25"
+    spectrum_id = "6957ab46-2cfa-4505-9605-640f353631b5"
     spectrum_data = fetch_spectrum_data(device_id, spectrum_id)
     plot_spectrum(spectrum_data, device_id)
