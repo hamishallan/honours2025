@@ -18,6 +18,22 @@ HEADER_SIZE = 256
 
 
 # ---------------- Utilities ----------------
+def send_cmd(sock, cmd):
+    sock.sendall((cmd + "\n").encode())
+    time.sleep(0.5)
+    sock.settimeout(5)
+    response_parts = []
+    while True:
+        try:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response_parts.append(chunk)
+        except socket.timeout:
+            break
+    return b''.join(response_parts).decode('utf-8', errors='replace').strip()
+
+
 def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
     """Wait until AoDAQ server responds to *IDN? and finishes initialization (STAT:INIT? == 0)."""
     start_time = time.time()
@@ -26,23 +42,8 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
             logging.info("Checking if AoDAQ is ready...")
 
             with socket.create_connection((host, port), timeout=5) as sock:
-                def send_cmd(cmd):
-                    sock.sendall((cmd + "\n").encode())
-                    time.sleep(0.5)
-                    sock.settimeout(5)
-                    response_parts = []
-                    while True:
-                        try:
-                            chunk = sock.recv(4096)
-                            if not chunk:
-                                break
-                            response_parts.append(chunk)
-                        except socket.timeout:
-                            break
-                    return b''.join(response_parts).decode('utf-8', errors='replace').strip()
-
                 # Step 1: Check *IDN?
-                idn_response = send_cmd("*IDN?")
+                idn_response = send_cmd(sock, "*IDN?")
                 if "ARCspectro" not in idn_response:
                     logging.info("AoDAQ not fully ready yet (no IDN response), retrying...")
                     time.sleep(CHECK_INTERVAL)
@@ -51,7 +52,7 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
                 logging.info("AoDAQ responded to *IDN?")
 
                 # Step 2: Check STAT:INIT?
-                status_response = send_cmd("STAT:INIT?")
+                status_response = send_cmd(sock, "STAT:INIT?")
                 if "0" in status_response:
                     logging.info("AoDAQ initialization complete.")
                     return True
@@ -64,12 +65,6 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
 
     logging.error("Timeout waiting for AoDAQ to initialize.")
     return False
-
-
-
-
-
-
 
 
 # ---------------- Main ----------------
