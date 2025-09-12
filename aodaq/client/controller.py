@@ -15,6 +15,7 @@ DB_FILE = "spectra.db"
 CHECK_INTERVAL = 2.0  # seconds
 MAX_STARTUP_TIME = 60  # seconds
 HEADER_SIZE = 256
+API_URL = "https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/"
 
 
 # ---------------- Utilities ----------------
@@ -114,6 +115,8 @@ def sample():
 def shutdown():
     global client, aodaq_process
     if client:
+        # logging.info("Uploading latest spectra before shutdown...")
+        # client.upload_spectra(API_URL, default_device_id="from shutdown", limit=3)
         client.close()
         client = None
     if aodaq_process:
@@ -122,25 +125,50 @@ def shutdown():
     logging.info("Shutdown complete.")
 
 
+def upload_cmd(args):
+    global client
+    if not client:
+        logging.warning("Client not initialised. Run 'init' first.")
+        return
+
+    limit = None
+    if args:
+        try:
+            limit = int(args[0])
+        except ValueError:
+            logging.warning("Invalid number for upload limit: %s", args[0])
+            return
+
+    logging.info("Uploading spectra (limit=%s)...", limit or "all")
+    client.upload_spectra(API_URL, default_device_id="stream_testing", limit=limit)
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    print("Commands: init, sample, quit")
+    print("Commands: init, sample, upload [N], quit")
 
     try:
         while True:
-            cmd = input("> ").strip().lower()
+            cmd_line = input("> ").strip().split()
+            if not cmd_line:
+                continue
+            cmd, *args = cmd_line
+
             if cmd == "init":
                 initialise()
             elif cmd == "sample":
                 sample()
+            elif cmd == "upload":
+                upload_cmd(args)
             elif cmd == "quit":
                 break
             else:
-                print("Unknown command. Available: init, sample, quit")
+                print("Unknown command. Available: init, sample, upload [N], quit")
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
         shutdown()
+
 
 
 if __name__ == "__main__":

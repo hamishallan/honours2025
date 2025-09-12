@@ -5,6 +5,7 @@ import time
 import uuid
 import sqlite3
 import logging
+import requests
 from datetime import datetime, timezone
 
 
@@ -22,6 +23,7 @@ class AoDAQClient:
         self.conn = sqlite3.connect(db_file)
         self._init_db()
         self.recv_buffer = b""  # persistent buffer
+
 
     # --- DB Methods ---
     def _init_db(self):
@@ -53,6 +55,7 @@ class AoDAQClient:
         """)
         self.conn.commit()
 
+
     def save_spectrum(self, spectrum, device_id="tractor_probe_1"):
         spectrum_id = str(uuid.uuid4())
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -73,6 +76,7 @@ class AoDAQClient:
 
     def close_db(self):
         self.conn.close()
+
 
     # --- AoDAQ TCP Methods ---
     def connect(self):
@@ -96,6 +100,7 @@ class AoDAQClient:
         self.sock.settimeout(None)
         logging.info("[AoDAQ_Client] Connection ready, buffer flushed.")
 
+
     def close(self):
         if self.sock:
             try:
@@ -104,6 +109,7 @@ class AoDAQClient:
                 pass
             self.sock.close()
         self.close_db()
+
 
     def send_cmd(self, cmd):
         self.sock.sendall((cmd + "\n").encode("ascii"))
@@ -115,6 +121,7 @@ class AoDAQClient:
             data += chunk
         return data.decode(errors="ignore")
 
+
     def wait_for_initialisation(self, poll_interval=2):
         logging.info("[AoDAQ_Client] Waiting for spectrometer initialisation...")
         while True:
@@ -124,9 +131,11 @@ class AoDAQClient:
                 break
             time.sleep(poll_interval)
 
+
     def start_stream(self):
         self.send_cmd("SPEC:STREAM 1")
         logging.info("[AoDAQ_Client] Streaming started.")
+
 
     def stop_stream(self):
         self.send_cmd("SPEC:STREAM 0")
@@ -156,6 +165,7 @@ class AoDAQClient:
 
         return None
 
+
     def parse_binary_spectrum(self, raw):
         raw = raw[:-3]  # strip terminator
 
@@ -183,3 +193,64 @@ class AoDAQClient:
             logging.warning(f"[AoDAQ_Client] Expected {num_points} points, got {len(spectrum)}")
 
         return spectrum
+    
+    
+    def upload_spectra(self, api_url, default_device_id="tractor_probe_1", limit=None):
+        """
+        Upload spectra from the local SQLite DB to the remote API.
+
+        Args:
+            api_url (str): Endpoint for uploads.
+            default_device_id (str): Device ID if missing in DB.
+            limit (int, optional): Max number of spectra to upload (most recent first).
+        """
+        cur = self.conn.cursor()
+
+        query = """
+            SELECT id, timestamp, device_id, accuracy_m, altitude_m, latitude, longitude
+            FROM core_spectrum
+            ORDER BY timestamp DESC
+        """
+        if limit:
+            query += f" LIMIT {limit}"
+
+        cur.execute(query)
+        spectra = cur.fetchall()
+
+        for spectrum in spectra:
+            spectrum_id, timestamp, device_id, accuracy_m, altitude_m, lat, lon = spectrum
+
+            # Fetch datapoints
+            cur.execute("""
+                SELECT wavelength, intensity
+                FROM core_spectrumdatapoint
+                WHERE spectrum_id = ?
+                ORDER BY id ASC
+            """, (spectrum_id,))
+            datapoints = cur.fetchall()
+
+            payload = {
+                "device_id": device_id or default_device_id,
+                "wavelengths": [w for w, _ in datapoints],
+                "intensities": [i for _, i in datapoints],
+            }
+
+            # Optional fields
+            if lat is not None and lon is not None:
+                payload["latitude"] = lat
+                payload["longitude"] = lon
+            if altitude_m is not None:
+                payload["altitude_m"] = altitude_m
+            if accuracy_m is not None:
+                payload["accuracy_m"] = accuracy_m
+
+            try:
+                resp = requests.post(api_url, json=payload, timeout=30)
+                if resp.status_code == 201:
+                    logging.info("Uploaded spectrum %s (%d points)",
+                                 spectrum_id, len(payload["wavelengths"]))
+                else:
+                    logging.error("Failed to upload %s: %s - %s",
+                                  spectrum_id, resp.status_code, resp.text)
+            except Exception as e:
+                logging.error("Error uploading %s: %s", spectrum_id, e)
