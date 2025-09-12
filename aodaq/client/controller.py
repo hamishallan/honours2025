@@ -5,6 +5,7 @@ import subprocess
 import logging
 
 from AoDAQClient import AoDAQClient
+from calibration import apply_calibrated_model
 
 # ---------------- Configuration ----------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # folder where automate_aodaq.py is
@@ -15,7 +16,9 @@ DB_FILE = "spectra.db"
 CHECK_INTERVAL = 2.0  # seconds
 MAX_STARTUP_TIME = 60  # seconds
 HEADER_SIZE = 256
-API_URL = "https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/"
+API_URL_SPECTRA = "https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-spectrum/"
+API_URL_PREDICTIONS = "https://rekehtm1f0.execute-api.us-east-1.amazonaws.com/dev/upload-prediction/"
+DEVICE_ID = "dev testing"
 
 
 # ---------------- Utilities ----------------
@@ -105,7 +108,16 @@ def sample():
         client.start_stream()
         spectrum = client.receive_spectrum()
         if spectrum:
-            client.save_spectrum(spectrum)
+            # Save spectrum with explicit ID
+            spectrum_id = client.save_spectrum(spectrum, device_id=DEVICE_ID)
+
+            # Compute prediction
+            calib_path = os.path.join(os.path.dirname(__file__), "calibration_coeffs.csv")
+            predicted_soc = apply_calibrated_model(spectrum, calib_path)
+
+            # Save prediction with same spectrum_id
+            client.save_prediction(spectrum_id, predicted_soc, device_id=DEVICE_ID)
+
             logging.info("Sample collected with %d points.", len(spectrum))
         client.stop_stream()
     except Exception as e:
@@ -140,7 +152,10 @@ def upload_cmd(args):
             return
 
     logging.info("Uploading spectra (limit=%s)...", limit or "all")
-    client.upload_spectra(API_URL, default_device_id="stream_testing", limit=limit)
+    mapping = client.upload_spectra(API_URL_SPECTRA, default_device_id="stream_testing", limit=limit)
+
+    logging.info("Uploading predictions (limit=%s)...", limit or "all")
+    client.upload_predictions(API_URL_PREDICTIONS, mapping, limit=limit)
 
 
 def main():

@@ -24,14 +24,19 @@ class AoDAQClient:
         self._init_db()
         self.recv_buffer = b""  # persistent buffer
 
+    # --------------------------------------------------------------------------------
+    # ░█▀▄░█▀█░▀█▀░█▀█░█▀▄░█▀█░█▀▀░█▀▀
+    # ░█░█░█▀█░░█░░█▀█░█▀▄░█▀█░▀▀█░█▀▀
+    # ░▀▀░░▀░▀░░▀░░▀░▀░▀▀░░▀░▀░▀▀▀░▀▀▀
+    # --------------------------------------------------------------------------------
 
-    # --- DB Methods ---
     def _init_db(self):
         cur = self.conn.cursor()
         
         # Drop existing tables if they exist
         cur.execute("DROP TABLE IF EXISTS core_spectrumdatapoint")
         cur.execute("DROP TABLE IF EXISTS core_spectrum")
+        cur.execute("DROP TABLE IF EXISTS core_prediction")
         
         cur.execute("""
         CREATE TABLE IF NOT EXISTS core_spectrum (
@@ -44,6 +49,7 @@ class AoDAQClient:
             longitude REAL
         )
         """)
+        
         cur.execute("""
         CREATE TABLE IF NOT EXISTS core_spectrumdatapoint (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,32 +59,30 @@ class AoDAQClient:
             FOREIGN KEY (spectrum_id) REFERENCES core_spectrum(id)
         )
         """)
-        self.conn.commit()
 
-
-    def save_spectrum(self, spectrum, device_id="tractor_probe_1"):
-        spectrum_id = str(uuid.uuid4())
-        timestamp = datetime.now(timezone.utc).isoformat()
-
-        cur = self.conn.cursor()
         cur.execute("""
-            INSERT INTO core_spectrum (id, timestamp, device_id)
-            VALUES (?, ?, ?)
-        """, (spectrum_id, timestamp, device_id))
-
-        cur.executemany("""
-            INSERT INTO core_spectrumdatapoint (wavelength, intensity, spectrum_id)
-            VALUES (?, ?, ?)
-        """, [(w, i, spectrum_id) for w, i in spectrum])
+        CREATE TABLE IF NOT EXISTS core_prediction (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spectrum_id TEXT NOT NULL,
+            predicted_value REAL NOT NULL,
+            device_id TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (spectrum_id) REFERENCES core_spectrum(id)
+        )
+        """)
 
         self.conn.commit()
-        logging.info("[AoDAQ_Client] Saved spectrum {} with {} points".format(spectrum_id, len(spectrum)))
+
 
     def close_db(self):
         self.conn.close()
-
-
-    # --- AoDAQ TCP Methods ---
+        
+    # --------------------------------------------------------------------------------
+    # ░▀█▀░█▀▀░█▀█
+    # ░░█░░█░░░█▀▀
+    # ░░▀░░▀▀▀░▀░░
+    # --------------------------------------------------------------------------------
+    
     def connect(self):
         self.sock = socket.create_connection((self.ip, self.port))
         logging.info(f"[AoDAQ_Client] {self.send_cmd('*IDN?')}")
@@ -120,7 +124,12 @@ class AoDAQClient:
                 break
             data += chunk
         return data.decode(errors="ignore")
-
+        
+    # --------------------------------------------------------------------------------
+    # ░█▄█░█▀▀░▀█▀░█░█░█▀█░█▀▄░█▀▀
+    # ░█░█░█▀▀░░█░░█▀█░█░█░█░█░▀▀█
+    # ░▀░▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀▀▀
+    # --------------------------------------------------------------------------------
 
     def wait_for_initialisation(self, poll_interval=2):
         logging.info("[AoDAQ_Client] Waiting for spectrometer initialisation...")
@@ -195,14 +204,44 @@ class AoDAQClient:
         return spectrum
     
     
+    
+    def save_spectrum(self, spectrum, device_id="tractor_probe_1"):
+        spectrum_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        cur = self.conn.cursor()
+        cur.execute("""
+            INSERT INTO core_spectrum (id, timestamp, device_id)
+            VALUES (?, ?, ?)
+        """, (spectrum_id, timestamp, device_id))
+
+        cur.executemany("""
+            INSERT INTO core_spectrumdatapoint (wavelength, intensity, spectrum_id)
+            VALUES (?, ?, ?)
+        """, [(w, i, spectrum_id) for w, i in spectrum])
+
+        self.conn.commit()
+        logging.info("[AoDAQ_Client] Saved spectrum {} with {} points".format(spectrum_id, len(spectrum)))
+        
+        return spectrum_id
+        
+    
+    def save_prediction(self, spectrum_id, predicted_value, device_id="tractor_probe_1"):
+        timestamp = datetime.now(timezone.utc).isoformat()
+        cur = self.conn.cursor()
+        cur.execute("""
+            INSERT INTO core_prediction (spectrum_id, predicted_value, device_id, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (spectrum_id, predicted_value, device_id, timestamp))
+        self.conn.commit()
+        logging.info("[AoDAQ_Client] Saved prediction %.3f for spectrum %s",
+                    predicted_value, spectrum_id)
+    
+    
     def upload_spectra(self, api_url, default_device_id="tractor_probe_1", limit=None):
         """
         Upload spectra from the local SQLite DB to the remote API.
-
-        Args:
-            api_url (str): Endpoint for uploads.
-            default_device_id (str): Device ID if missing in DB.
-            limit (int, optional): Max number of spectra to upload (most recent first).
+        Returns a dict {local_id: server_id}.
         """
         cur = self.conn.cursor()
 
@@ -216,6 +255,8 @@ class AoDAQClient:
 
         cur.execute(query)
         spectra = cur.fetchall()
+
+        mapping = {}  # local_id -> server_id
 
         for spectrum in spectra:
             spectrum_id, timestamp, device_id, accuracy_m, altitude_m, lat, lon = spectrum
@@ -247,10 +288,66 @@ class AoDAQClient:
             try:
                 resp = requests.post(api_url, json=payload, timeout=30)
                 if resp.status_code == 201:
-                    logging.info("Uploaded spectrum %s (%d points)",
-                                 spectrum_id, len(payload["wavelengths"]))
+                    try:
+                        data = resp.json()
+                    except Exception:
+                        data = {}
+                        
+                    server_id = data.get("spectrum_id")
+                    mapping[spectrum_id] = server_id
+                    logging.info("Uploaded spectrum %s (%d points). Server ID: %s",
+                                spectrum_id, len(payload["wavelengths"]), server_id or "N/A")
                 else:
                     logging.error("Failed to upload %s: %s - %s",
-                                  spectrum_id, resp.status_code, resp.text)
+                                spectrum_id, resp.status_code, resp.text)
             except Exception as e:
                 logging.error("Error uploading %s: %s", spectrum_id, e)
+
+        return mapping
+
+    
+    def upload_predictions(self, api_url, mapping, limit=None):
+        """
+        Upload predictions, mapping local spectrum_id -> server_id.
+        """
+        cur = self.conn.cursor()
+
+        query = """
+            SELECT id, spectrum_id, predicted_value, device_id, timestamp
+            FROM core_prediction
+            ORDER BY timestamp DESC
+        """
+        if limit:
+            query += f" LIMIT {limit}"
+
+        cur.execute(query)
+        predictions = cur.fetchall()
+
+        for pred in predictions:
+            pred_id, local_spectrum_id, value, device_id, ts = pred
+
+            server_id = mapping.get(local_spectrum_id)
+            if not server_id:
+                logging.warning("Skipping prediction %s: no server ID for local spectrum %s",
+                                pred_id, local_spectrum_id)
+                continue
+
+            payload = {
+                "device_id": device_id,
+                "spectrum": server_id,  # use server-side ID!
+                "predicted_value": value,
+                "timestamp": ts
+            }
+
+            try:
+                resp = requests.post(api_url, json=payload, timeout=30)
+                if resp.status_code == 201:
+                    logging.info("Uploaded prediction %.3f for spectrum %s (server ID %s)",
+                                value, local_spectrum_id, server_id)
+                else:
+                    logging.error("Failed to upload prediction %s: %s - %s",
+                                local_spectrum_id, resp.status_code, resp.text)
+            except Exception as e:
+                logging.error("Error uploading prediction for %s: %s", local_spectrum_id, e)
+
+
