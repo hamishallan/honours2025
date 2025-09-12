@@ -54,7 +54,7 @@ def list_spectra(request):
             # Bad params → ignore filter
             pass
 
-    serializer = SpectrumDetailSerializer(spectra, many=True)
+    serializer = SpectrumDetailSerializer(spectra[:10], many=True)
     return Response(serializer.data)
 
 

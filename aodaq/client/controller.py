@@ -67,7 +67,13 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
     return False
 
 
+
+
+
+
 def initialise():
+    global client, aodaq_process
+
     logging.info("Starting AoDAQ server: %s", AODAQ_EXECUTABLE)
     aodaq_process = subprocess.Popen(
         [AODAQ_EXECUTABLE, "-v"],
@@ -80,40 +86,61 @@ def initialise():
     if not wait_for_aodaq(AODAQ_HOST, AODAQ_PORT):
         logging.error("AoDAQ did not become ready in time. Exiting.")
         aodaq_process.terminate()
-        return None, None
+        aodaq_process = None
+        return
 
     client = AoDAQClient()
     client.connect()
+    logging.info("Spectrometer initialised and ready.")
 
-    return aodaq_process, client
 
+def sample():
+    global client
+    if not client:
+        logging.warning("Client not initialised. Run 'init' first.")
+        return
 
-def run(client, num_spectra=5):
     try:
         client.start_stream()
-        for _ in range(num_spectra):
-            spectrum = client.receive_spectrum()
-            if spectrum:
-                client.save_spectrum(spectrum)
+        spectrum = client.receive_spectrum()
+        if spectrum:
+            client.save_spectrum(spectrum)
+            logging.info("Sample collected with %d points.", len(spectrum))
         client.stop_stream()
-    finally:
+    except Exception as e:
+        logging.error("Error while sampling: %s", e)
+
+
+def shutdown():
+    global client, aodaq_process
+    if client:
         client.close()
+        client = None
+    if aodaq_process:
+        aodaq_process.terminate()
+        aodaq_process = None
+    logging.info("Shutdown complete.")
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
-    aodaq_process, client = initialise()
-    if not client:
-        return
+    print("Commands: init, sample, quit")
 
     try:
-        run(client, num_spectra=5)
+        while True:
+            cmd = input("> ").strip().lower()
+            if cmd == "init":
+                initialise()
+            elif cmd == "sample":
+                sample()
+            elif cmd == "quit":
+                break
+            else:
+                print("Unknown command. Available: init, sample, quit")
     except KeyboardInterrupt:
-        logging.info("Interrupted by user.")
+        print("\nExiting...")
     finally:
-        aodaq_process.terminate()
-        logging.info("AoDAQ server stopped.")
+        shutdown()
 
 
 if __name__ == "__main__":
