@@ -3,6 +3,8 @@ import socket
 import time
 import subprocess
 import logging
+import threading
+import numpy as np
 
 from AoDAQClient import AoDAQClient
 from calibration.calibration import apply_calibrated_model
@@ -20,19 +22,18 @@ DEVICE_ID = "dev testing"
 
 
 class Spectrometer:
-    def __init__(self, executable, host="127.0.0.1", port=1242,
-                 device_id="dev testing",
-                 api_url_spectra=API_URL_SPECTRA,
-                 api_url_predictions=API_URL_PREDICTIONS):
-        self.executable = executable
-        self.host = host
-        self.port = port
-        self.device_id = device_id
-        self.api_url_spectra = api_url_spectra
-        self.api_url_predictions = api_url_predictions
+    def __init__(self):
+        self.executable = AODAQ_EXECUTABLE
+        self.host = AODAQ_HOST
+        self.port = AODAQ_PORT
+        self.device_id = DEVICE_ID
+        self.api_url_spectra = API_URL_SPECTRA
+        self.api_url_predictions = API_URL_PREDICTIONS
 
         self.process = None
         self.client = None
+        self.streaming = False
+        self.collected_spectra = []
         
     # --------------------------------------------------------------------------------
     # ░█░█░▀█▀░▀█▀░█░░░▀█▀░▀█▀░▀█▀░█▀▀░█▀▀
@@ -166,3 +167,81 @@ class Spectrometer:
             self.process.terminate()
             self.process = None
         logging.info("Shutdown complete.")
+
+
+
+
+
+
+
+
+    def start(self):
+        if not self.client:
+            logging.warning("Client not initialised. Run 'initialise' first.")
+            return
+        if getattr(self, "streaming", False):
+            logging.warning("Stream already running.")
+            return
+
+        self.streaming = True
+        self.collected_spectra = []
+
+        def stream_loop():
+            try:
+                self.client.start_stream()
+                logging.info("Streaming started. Type 'stop' to end.")
+
+                while self.streaming:
+                    spectrum = self.client.receive_spectrum()
+                    if spectrum:
+                        self.collected_spectra.append(spectrum)
+                        logging.info("Collected spectrum with %d points (total=%d)",
+                                     len(spectrum), len(self.collected_spectra))
+                    else:
+                        time.sleep(0.5)
+
+            except Exception as e:
+                logging.error("Error during streaming: %s", e)
+            finally:
+                try:
+                    self.client.stop_stream()
+                except Exception:
+                    pass
+                logging.info("Streaming loop ended.")
+
+        self.stream_thread = threading.Thread(target=stream_loop, daemon=True)
+        self.stream_thread.start()
+
+    def stop(self):
+        if not getattr(self, "streaming", False):
+            logging.warning("Stream is not running.")
+            return
+
+        logging.info("Stopping stream and averaging spectra...")
+        self.streaming = False
+        if hasattr(self, "stream_thread"):
+            self.stream_thread.join(timeout=5)
+            self.stream_thread = None
+
+        if not self.collected_spectra:
+            logging.warning("No spectra were collected during stream.")
+            return None
+
+        # Average spectra
+        try:
+            avg_spectrum = np.mean(self.collected_spectra, axis=0)
+
+            # Save averaged spectrum + prediction
+            spectrum_id = self.client.save_spectrum(avg_spectrum, device_id=self.device_id)
+            calib_path = os.path.join(os.path.dirname(__file__), "calibration/calibration_coeffs.csv")
+            predicted_soc = apply_calibrated_model(avg_spectrum, calib_path)
+            self.client.save_prediction(spectrum_id, predicted_soc, device_id=self.device_id)
+
+            logging.info("Averaged spectrum saved (n=%d spectra) | spectrum_id=%s | SOC=%.3f",
+                         len(self.collected_spectra), spectrum_id, predicted_soc)
+
+            self.collected_spectra = []  # clear buffer
+            return spectrum_id, predicted_soc
+        except Exception as e:
+            logging.error("Failed to average and save spectra: %s", e)
+            return None

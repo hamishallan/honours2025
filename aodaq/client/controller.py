@@ -1,8 +1,8 @@
 import os
 import logging
-from Spectrometer import Spectrometer   # <-- assuming you put the class in spectrometer.py
+from Spectrometer import Spectrometer
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # folder where automate_aodaq.py is
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) 
 AODAQ_EXECUTABLE = os.path.join(SCRIPT_DIR, "AoDAQ-v1.4.2") 
 AODAQ_HOST = "127.0.0.1"
 AODAQ_PORT = 1242
@@ -11,12 +11,7 @@ DEVICE_ID = "dev testing"
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-    spectrometer = Spectrometer(
-        executable=AODAQ_EXECUTABLE,
-        host=AODAQ_HOST,
-        port=AODAQ_PORT,
-        device_id=DEVICE_ID
-    )
+    spectrometer = Spectrometer()
 
     print("Commands: init, sample, upload [N], quit")
 
@@ -40,6 +35,15 @@ def main():
             elif cmd == "upload":
                 limit = int(args[0]) if args else None
                 spectrometer.upload(limit=limit)
+                
+            elif cmd == "start":
+                spectrometer.start()
+
+            elif cmd == "stop":
+                result = spectrometer.stop()
+                if result:
+                    spectrum_id, soc = result
+                    print("Averaged spectrum_id={} | SOC={:.3f}".format(spectrum_id, soc))
 
             elif cmd == "quit":
                 break
