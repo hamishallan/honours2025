@@ -69,7 +69,7 @@ class AoDAQClient:
         """, [(w, i, spectrum_id) for w, i in spectrum])
 
         self.conn.commit()
-        logging.info("Saved spectrum {} with {} points".format(spectrum_id, len(spectrum)))
+        logging.info("[AoDAQ_Client] Saved spectrum {} with {} points".format(spectrum_id, len(spectrum)))
 
     def close_db(self):
         self.conn.close()
@@ -77,12 +77,24 @@ class AoDAQClient:
     # --- AoDAQ TCP Methods ---
     def connect(self):
         self.sock = socket.create_connection((self.ip, self.port))
-        logging.info(self.send_cmd("*IDN?"))
+        logging.info(f"[AoDAQ_Client] {self.send_cmd('*IDN?')}")
         self.wait_for_initialisation()
         
         # Initialisation commands
         self.send_cmd("TRAN:BIN 1")
         self.send_cmd("SPEC:WLG 1")
+        
+        # --- Flush any extra bytes so we don't block later ---
+        self.sock.settimeout(0.1)
+        try:
+            while True:
+                leftover = self.sock.recv(4096)
+                if not leftover:
+                    break
+        except Exception:
+            pass
+        self.sock.settimeout(None)
+        logging.info("[AoDAQ_Client] Connection ready, buffer flushed.")
 
     def close(self):
         if self.sock:
@@ -104,21 +116,21 @@ class AoDAQClient:
         return data.decode(errors="ignore")
 
     def wait_for_initialisation(self, poll_interval=2):
-        logging.info("Waiting for spectrometer initialisation...")
+        logging.info("[AoDAQ_Client] Waiting for spectrometer initialisation...")
         while True:
             resp = self.send_cmd("STAT:INIT?")
             if "0" in resp.split():
-                logging.info("Spectrometer is ready.")
+                logging.info("[AoDAQ_Client] Spectrometer is ready.")
                 break
             time.sleep(poll_interval)
 
     def start_stream(self):
         self.send_cmd("SPEC:STREAM 1")
-        logging.info("Streaming started.")
+        logging.info("[AoDAQ_Client] Streaming started.")
 
     def stop_stream(self):
         self.send_cmd("SPEC:STREAM 0")
-        logging.info("Streaming stopped.")
+        logging.info("[AoDAQ_Client] Streaming stopped.")
         
 
     def receive_spectrum(self):
@@ -137,7 +149,7 @@ class AoDAQClient:
 
             # Skip empty / too-short frames
             if len(frame) < HEADER_SIZE + 3:
-                logging.debug(f"Skipping short frame of {len(frame)} bytes")
+                logging.debug(f"[AoDAQ_Client] Skipping short frame of {len(frame)} bytes")
                 continue
 
             return self.parse_binary_spectrum(frame)
@@ -148,7 +160,7 @@ class AoDAQClient:
         raw = raw[:-3]  # strip terminator
 
         if len(raw) < HEADER_SIZE:
-            raise ValueError(f"Frame too short: {len(raw)} bytes")
+            raise ValueError(f"[AoDAQ_Client] Frame too short: {len(raw)} bytes")
 
         header = raw[:HEADER_SIZE]
         data_bytes = raw[HEADER_SIZE:]
@@ -158,7 +170,7 @@ class AoDAQClient:
         expected_len = num_points * 8
 
         if len(data_bytes) < expected_len:
-            logging.warning(f"Got {len(data_bytes)} data bytes, expected {expected_len}")
+            logging.warning(f"[AoDAQ_Client] Got {len(data_bytes)} data bytes, expected {expected_len}")
             return []
 
         data_bytes = data_bytes[:expected_len]
@@ -168,8 +180,8 @@ class AoDAQClient:
         spectrum = [(floats[i], floats[i+1]) for i in range(0, len(floats), 2)]
 
         if len(spectrum) != num_points:
-            logging.warning(f"Expected {num_points} points, got {len(spectrum)}")
+            logging.warning(f"[AoDAQ_Client] Expected {num_points} points, got {len(spectrum)}")
 
-        logging.info("First 5 data points: %s", spectrum[:5])
+        logging.info("[AoDAQ_Client] First 5 data points: %s", spectrum[:5])
 
         return spectrum
