@@ -67,11 +67,8 @@ def wait_for_aodaq(host, port, timeout=MAX_STARTUP_TIME):
     return False
 
 
-# ---------------- Main ----------------
-def main():
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
-    logging.info(f"Starting AoDAQ server: {AODAQ_EXECUTABLE}")
+def initialise():
+    logging.info("Starting AoDAQ server: %s", AODAQ_EXECUTABLE)
     aodaq_process = subprocess.Popen(
         [AODAQ_EXECUTABLE, "-v"],
         stdout=subprocess.PIPE,
@@ -80,25 +77,38 @@ def main():
         bufsize=1
     )
 
+    if not wait_for_aodaq(AODAQ_HOST, AODAQ_PORT):
+        logging.error("AoDAQ did not become ready in time. Exiting.")
+        aodaq_process.terminate()
+        return None, None
+
+    client = AoDAQClient()
+    client.connect()
+
+    return aodaq_process, client
+
+
+def run(client, num_spectra=5):
     try:
-        if not wait_for_aodaq(AODAQ_HOST, AODAQ_PORT):
-            logging.error("AoDAQ did not become ready in time. Exiting.")
-            aodaq_process.terminate()
-            return
+        client.start_stream()
+        for _ in range(num_spectra):
+            spectrum = client.receive_spectrum()
+            if spectrum:
+                client.save_spectrum(spectrum)
+        client.stop_stream()
+    finally:
+        client.close()
 
-        client = AoDAQClient()
-        client.connect()
 
-        try:
-            client.start_stream()
-            for _ in range(1):  # collect 5 spectra as example
-                spectrum = client.receive_spectrum()
-                if spectrum:
-                    client.save_spectrum(spectrum)
-            client.stop_stream()
-        finally:
-            client.close()
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
+    aodaq_process, client = initialise()
+    if not client:
+        return
+
+    try:
+        run(client, num_spectra=5)
     except KeyboardInterrupt:
         logging.info("Interrupted by user.")
     finally:

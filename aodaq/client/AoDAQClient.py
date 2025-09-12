@@ -182,6 +182,4 @@ class AoDAQClient:
         if len(spectrum) != num_points:
             logging.warning(f"[AoDAQ_Client] Expected {num_points} points, got {len(spectrum)}")
 
-        logging.info("[AoDAQ_Client] First 5 data points: %s", spectrum[:5])
-
         return spectrum
