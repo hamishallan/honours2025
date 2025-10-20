@@ -169,12 +169,6 @@ class Spectrometer:
         logging.info("Shutdown complete.")
 
 
-
-
-
-
-
-
     def start(self):
         if not self.client:
             logging.warning("Client not initialised. Run 'initialise' first.")
@@ -211,6 +205,7 @@ class Spectrometer:
 
         self.stream_thread = threading.Thread(target=stream_loop, daemon=True)
         self.stream_thread.start()
+
 
     def stop(self):
         if not getattr(self, "streaming", False):

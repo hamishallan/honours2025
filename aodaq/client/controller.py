@@ -2,11 +2,11 @@ import os
 import logging
 from Spectrometer import Spectrometer
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) 
-AODAQ_EXECUTABLE = os.path.join(SCRIPT_DIR, "AoDAQ-v1.4.2") 
-AODAQ_HOST = "127.0.0.1"
-AODAQ_PORT = 1242
-DEVICE_ID = "dev testing"
+# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) 
+# AODAQ_EXECUTABLE = os.path.join(SCRIPT_DIR, "AoDAQ-v1.4.2") 
+# AODAQ_HOST = "127.0.0.1"
+# AODAQ_PORT = 1242
+# DEVICE_ID = "dev testing"
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
