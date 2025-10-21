@@ -44,23 +44,23 @@ class LoadCell:
             print("Weight: {:.3f} kg | Pressure: {:.3f} Pa".format(weight, pressure))
 
 
-if __name__ == "__main__":
-    try:
-        GPIO.setmode(GPIO.BCM)
-        loadcell = LoadCell(dout_pin=20, pd_sck_pin=21)
+# if __name__ == "__main__":
+#     try:
+#         GPIO.setmode(GPIO.BCM)
+#         loadcell = LoadCell(dout_pin=20, pd_sck_pin=21)
 
-        mode = input("Enter 'c' to calibrate or 'r' to read: ").strip().lower()
-        if mode == "c":
-            known_weight = float(input("Enter known weight (kg): "))
-            ratio = loadcell.calibrate(known_weight)
-            print("Save this calibration factor for future runs:", ratio)
-        elif mode == "r":
-            # ratio = float(input("Enter saved calibration factor: "))
-            ratio = loadcell.ratio
-            loadcell.set_calibration(ratio)
-            loadcell.stream()
-        else:
-            print("Invalid selection.")
+#         mode = input("Enter 'c' to calibrate or 'r' to read: ").strip().lower()
+#         if mode == "c":
+#             known_weight = float(input("Enter known weight (kg): "))
+#             ratio = loadcell.calibrate(known_weight)
+#             print("Save this calibration factor for future runs:", ratio)
+#         elif mode == "r":
+#             # ratio = float(input("Enter saved calibration factor: "))
+#             ratio = loadcell.ratio
+#             loadcell.set_calibration(ratio)
+#             loadcell.stream()
+#         else:
+#             print("Invalid selection.")
 
-    finally:
-        GPIO.cleanup()
+#     finally:
+#         GPIO.cleanup()

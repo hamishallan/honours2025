@@ -21,7 +21,7 @@ class Encoder:
     WHEEL_CIRCUM_MM = math.pi * WHEEL_DIAMETER_MM
     MM_PER_COUNT = WHEEL_CIRCUM_MM / COUNTS_PER_REV  # ≈ 0.0514 mm/count
 
-    def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=1.0):
+    def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=0.1):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -61,7 +61,6 @@ class Encoder:
     def parse_line(self, line):
         """Parse a single line and compute physical values."""
         match = self.pattern.search(line)
-        
         if match:
             enc_id = int(match.group(1))
             count = int(match.group(2))
@@ -98,6 +97,8 @@ class Encoder:
     def read_data(self):
         """Read and parse the next valid encoder line."""
         line = self.read_line()
+        if not line:
+            return None
         return self.parse_line(line)
 
     def get_latest(self):
