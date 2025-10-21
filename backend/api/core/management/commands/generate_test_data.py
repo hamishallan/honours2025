@@ -95,7 +95,7 @@ class Command(BaseCommand):
     def _create_prediction_grid(self, lon, lat, minx, maxx):
         # East–west gradient: high in west → low in east
         rel_x = (lon - minx) / (maxx - minx)
-        base_value = 6.0 - (rel_x * 4.0)   # ~6% west → ~2% east
+        base_value = 7.0 - (rel_x * 6.9)   # ~6% west → ~2% east
         noise = random.gauss(0, 0.3)
         soc_value = max(1.5, min(6.0, base_value + noise))
         self._save_prediction(lon, lat, soc_value)
@@ -103,7 +103,7 @@ class Command(BaseCommand):
 
     def _create_prediction_random(self, lon, lat):
         # Uniform random in [2.0, 6.0]
-        soc_value = random.uniform(2.0, 6.0)
+        soc_value = random.uniform(1.0, 7.0)
         self._save_prediction(lon, lat, soc_value)
         return 1
 
