@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Spectrum, SpectrumDataPoint, Prediction, Field
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field, Run
 
 
 def _to_geojson_point(obj):
@@ -78,3 +78,21 @@ class FieldSerializer(serializers.ModelSerializer):
             "type": "Polygon",
             "coordinates": [obj.boundary]  # wrap in list per GeoJSON spec
         }
+
+
+class RunSerializer(serializers.ModelSerializer):
+    spectrum_id = serializers.UUIDField(source="spectrum.id", read_only=True)
+
+    class Meta:
+        model = Run
+        fields = [
+            "id",
+            "timestamp",
+            "latitude",
+            "longitude",
+            "spectrum_id",
+            "predicted_soc",
+            "max_depth_mm",
+            "max_weight_kg",
+            "compaction_pa",
+        ]

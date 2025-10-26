@@ -14,10 +14,20 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
 from django.urls import path
-from .views import upload_spectrum, list_spectra, upload_prediction, fields_view, field_points, fields_geojson, field_heatmap
+from django.contrib import admin
 from django.http import HttpResponse
+from .views import (
+    field_runs,
+    upload_run,
+    fields_view,
+    field_points,
+    list_spectra,
+    field_heatmap,
+    fields_geojson,
+    upload_spectrum,
+    upload_prediction,
+)
 
 def home(request):
     return HttpResponse("Hello from Django on AWS Lambda!")
@@ -30,6 +40,8 @@ urlpatterns = [
     path("upload-spectrum/", upload_spectrum, name="upload-spectrum"),
     path("fields/", fields_view),
     path("fields/geojson/", fields_geojson),
+    path("fields/<uuid:field_id>/runs/", field_runs),
     path("fields/<uuid:field_id>/heatmap/", field_heatmap),
     path("fields/<uuid:field_id>/points/", field_points),
+    path("upload-run/", upload_run, name="upload-run"),
 ]

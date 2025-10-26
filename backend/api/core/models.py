@@ -12,10 +12,12 @@ class Spectrum(models.Model):
     altitude_m = models.FloatField(null=True, blank=True)
     accuracy_m = models.FloatField(null=True, blank=True)
     
+    
 class SpectrumDataPoint(models.Model):
     spectrum = models.ForeignKey(Spectrum, related_name='data', on_delete=models.CASCADE)
     wavelength = models.FloatField()
     intensity = models.FloatField()
+    
     
 class Prediction(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -45,6 +47,37 @@ class FieldHeatmapPoint(models.Model):
     latitude = models.FloatField()
     longitude = models.FloatField()
     value = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["field", "timestamp"]),
+        ]
+        
+
+class Run(models.Model):
+    id = models.AutoField(primary_key=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    spectrum = models.ForeignKey(
+        "Spectrum", null=True, blank=True, on_delete=models.SET_NULL, related_name="runs"
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    predicted_soc = models.FloatField(null=True, blank=True)
+    max_depth_mm = models.FloatField(null=True, blank=True)
+    max_weight_kg = models.FloatField(null=True, blank=True)
+    compaction_pa = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Run {self.id} ({self.timestamp})"
+
+
+class FieldCompactionHeatmapPoint(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    field = models.ForeignKey("Field", on_delete=models.CASCADE, related_name="compaction_heatmap_points")
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    value = models.FloatField()  # compaction in Pa
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:

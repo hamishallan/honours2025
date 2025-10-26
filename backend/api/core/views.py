@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from shapely.geometry import Polygon, Point, box, MultiPolygon
 
-from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint
-from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint, Run
+from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer, RunSerializer
 
 
 @api_view(['GET'])
@@ -304,6 +304,72 @@ def save_heatmap_points(field, points):
     FieldHeatmapPoint.objects.bulk_create(objs)
     
 
+def generate_compaction_heatmap_points(boundary, cell_size=0.001):
+    """
+    Generate IDW-interpolated compaction heatmap using runs.compaction_pa values.
+    """
+    poly = Polygon(boundary)
+
+    # Updated query — no longer depends on Spectrum
+    runs = Run.objects.filter(
+        latitude__isnull=False,
+        longitude__isnull=False,
+        compaction_pa__isnull=False
+    )
+
+    samples = [
+        (r.longitude, r.latitude, r.compaction_pa)
+        for r in runs
+    ]
+
+    if not samples:
+        return {"type": "FeatureCollection", "features": []}, []
+
+    minx, miny, maxx, maxy = poly.bounds
+    features = []
+    points = []
+
+    x = minx
+    while x < maxx:
+        y = miny
+        while y < maxy:
+            cell = box(x, y, x + cell_size, y + cell_size)
+            clipped = cell.intersection(poly)
+            if not clipped.is_empty:
+                cx, cy = clipped.centroid.x, clipped.centroid.y
+                val = idw_predict(cx, cy, samples)
+                if val is not None:
+                    if isinstance(clipped, Polygon):
+                        coords = [list(clipped.exterior.coords)]
+                    elif isinstance(clipped, MultiPolygon):
+                        coords = [list(p.exterior.coords) for p in clipped.geoms]
+                    else:
+                        coords = []
+
+                    features.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon" if isinstance(clipped, Polygon) else "MultiPolygon",
+                            "coordinates": coords
+                        },
+                        "properties": {"value": val}
+                    })
+                    points.append((cy, cx, val))
+            y += cell_size
+        x += cell_size
+
+    return {"type": "FeatureCollection", "features": features}, points
+
+
+def save_compaction_heatmap_points(field, points):
+    from .models import FieldCompactionHeatmapPoint
+    objs = [
+        FieldCompactionHeatmapPoint(field=field, latitude=lat, longitude=lon, value=val)
+        for lat, lon, val in points
+    ]
+    FieldCompactionHeatmapPoint.objects.bulk_create(objs)
+
+
 @api_view(['GET'])
 def field_heatmap(request, field_id):
     try:
@@ -313,3 +379,62 @@ def field_heatmap(request, field_id):
 
     feature_collection, _ = generate_heatmap_points(field.boundary)
     return Response(feature_collection)
+
+
+@api_view(["POST"])
+def upload_run(request):
+    """
+    Upload combined mechanical and spectral data to the runs table.
+    Example JSON body:
+    {
+        "spectrum_id": "uuid-string",
+        "predicted_soc": 1.23,
+        "max_depth_mm": 150.0,
+        "max_weight_kg": 2.8,
+        "compaction_pa": 34500.2
+    }
+    """
+    serializer = RunSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def field_runs(request, field_id):
+    try:
+        field = Field.objects.get(pk=field_id)
+    except Field.DoesNotExist:
+        return Response({"error": "Field not found"}, status=404)
+
+    poly = Polygon(field.boundary)
+
+    runs = Run.objects.filter(
+        latitude__isnull=False,
+        longitude__isnull=False
+    )
+
+    features = []
+    for r in runs:
+        pt = Point(r.longitude, r.latitude)
+        if poly.contains(pt):
+            features.append({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [r.longitude, r.latitude]
+                },
+                "properties": {
+                    "predicted_soc": r.predicted_soc,
+                    "compaction_pa": r.compaction_pa,
+                    "max_depth_mm": r.max_depth_mm,
+                    "max_weight_kg": r.max_weight_kg,
+                    "timestamp": r.timestamp.isoformat(),
+                }
+            })
+
+    return Response({
+        "type": "FeatureCollection",
+        "features": features
+    })
