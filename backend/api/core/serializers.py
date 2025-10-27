@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Spectrum, SpectrumDataPoint, Prediction, Field, Run
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field, Run, PiCommand
 
 
 def _to_geojson_point(obj):
@@ -96,3 +96,9 @@ class RunSerializer(serializers.ModelSerializer):
             "max_weight_kg",
             "compaction_pa",
         ]
+
+
+class PiCommandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PiCommand
+        fields = '__all__'

@@ -84,3 +84,13 @@ class FieldCompactionHeatmapPoint(models.Model):
         indexes = [
             models.Index(fields=["field", "timestamp"]),
         ]
+
+
+class PiCommand(models.Model):
+    device_id = models.CharField(max_length=64)
+    command = models.CharField(max_length=64)
+    acknowledged = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.device_id} - {self.command}"

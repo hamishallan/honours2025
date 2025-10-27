@@ -14,9 +14,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path
+from django.urls import path, include
 from django.contrib import admin
 from django.http import HttpResponse
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 from .views import (
     field_runs,
     upload_run,
@@ -27,6 +31,9 @@ from .views import (
     fields_geojson,
     upload_spectrum,
     upload_prediction,
+    StartPiScriptView,
+    PiCommandRetrieveView,
+    PiCommandAcknowledgeView
 )
 
 def home(request):
@@ -44,4 +51,9 @@ urlpatterns = [
     path("fields/<uuid:field_id>/heatmap/", field_heatmap),
     path("fields/<uuid:field_id>/points/", field_points),
     path("upload-run/", upload_run, name="upload-run"),
+    path("start-pi-script/", StartPiScriptView.as_view(), name="start-pi-script"),
+    path("pi-commands/<str:device_id>/", PiCommandRetrieveView.as_view(), name="pi-command-get"),
+    path("pi-commands/<str:device_id>/ack/", PiCommandAcknowledgeView.as_view(), name="pi-command-ack"),
+    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]

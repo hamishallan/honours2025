@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 # Load environment variables
 load_dotenv()
@@ -29,7 +30,12 @@ SECRET_KEY = 'django-insecure--x&-#4efupvzky*ezcq@4ajjlx4yyyy^p*he+mh)1v&-twc9s$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["rekehtm1f0.execute-api.us-east-1.amazonaws.com", "127.0.0.1", "localhost"]
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+}
+
+ALLOWED_HOSTS = ["rekehtm1f0.execute-api.us-east-1.amazonaws.com", "127.0.0.1", "localhost", "*", "192.168.204.151"]
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -78,6 +84,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",  # default: public unless overridden
+    ],
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

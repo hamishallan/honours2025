@@ -1,13 +1,15 @@
 import math
 import numpy as np
 from django.db.models import Q
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 from shapely.geometry import Polygon, Point, box, MultiPolygon
 
-from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint, Run
-from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer, RunSerializer
+
+from .models import Spectrum, SpectrumDataPoint, Prediction, Field, FieldHeatmapPoint, Run, PiCommand
+from .serializers import SpectrumDetailSerializer, PredictionSerializer, FieldSerializer, RunSerializer, PiCommandSerializer
 
 
 @api_view(['GET'])
@@ -438,3 +440,40 @@ def field_runs(request, field_id):
         "type": "FeatureCollection",
         "features": features
     })
+
+
+# 1️⃣ Web app endpoint – create command
+class StartPiScriptView(generics.CreateAPIView):
+    serializer_class = PiCommandSerializer
+    permission_classes = [IsAuthenticated]  # 👈 requires JWT or session auth
+
+    def post(self, request, *args, **kwargs):
+        device_id = request.data.get("device_id")
+        command = request.data.get("command", "start")
+        PiCommand.objects.create(device_id=device_id, command=command)
+        return Response({"message": "Command queued"}, status=status.HTTP_201_CREATED)
+
+
+# 2️⃣ Raspberry Pi endpoint – get latest unacknowledged command
+class PiCommandRetrieveView(generics.RetrieveAPIView):
+    serializer_class = PiCommandSerializer
+    permission_classes = [IsAuthenticated]  # 👈
+    lookup_field = "device_id"
+
+    def get(self, request, *args, **kwargs):
+        device_id = kwargs["device_id"]
+        cmd = PiCommand.objects.filter(device_id=device_id, acknowledged=False).order_by("-created_at").first()
+        if cmd:
+            return Response(PiCommandSerializer(cmd).data)
+        return Response({"command": None})
+
+
+# 3️⃣ Raspberry Pi endpoint – acknowledge command
+from rest_framework.views import APIView
+
+class PiCommandAcknowledgeView(APIView):
+    permission_classes = [IsAuthenticated]  # 👈
+
+    def post(self, request, device_id):
+        PiCommand.objects.filter(device_id=device_id, acknowledged=False).update(acknowledged=True)
+        return Response({"message": "Acknowledged"})
