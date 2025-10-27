@@ -81,8 +81,6 @@ class FieldSerializer(serializers.ModelSerializer):
 
 
 class RunSerializer(serializers.ModelSerializer):
-    spectrum_id = serializers.UUIDField(source="spectrum.id", read_only=True)
-
     class Meta:
         model = Run
         fields = [
@@ -90,7 +88,7 @@ class RunSerializer(serializers.ModelSerializer):
             "timestamp",
             "latitude",
             "longitude",
-            "spectrum_id",
+            "spectrum",
             "predicted_soc",
             "max_depth_mm",
             "max_weight_kg",

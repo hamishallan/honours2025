@@ -1,5 +1,10 @@
 <template>
-  <button @click="startPi" class="btn">Start Raspberry Pi Script</button>
+  <div id="app">
+    <h1 class="title">Raspberry Pi Control Panel</h1>
+    <p class="subtitle">Remotely start your Pi integration script with one click.</p>
+    <button @click="startPi" class="btn">Start Raspberry Pi Script</button>
+    <p class="footer">© 2025 In-Situ Soil Monitoring Project</p>
+  </div>
 </template>
 
 <script>
